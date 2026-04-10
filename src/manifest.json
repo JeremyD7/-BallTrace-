@@ -1,0 +1,23 @@
+{
+  "name": "BallTrace",
+  "appid": "__UNI__BALLTRACE",
+  "description": "BallTrace mobile and H5 starter project.",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3
+  },
+  "h5": {
+    "title": "BallTrace",
+    "router": {
+      "base": "/"
+    }
+  },
+  "mp-weixin": {
+    "appid": ""
+  },
+  "vueVersion": "3"
+}
