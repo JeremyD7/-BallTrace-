@@ -13,6 +13,8 @@ export default {
 </script>
 
 <style lang="scss">
+@import '@/uni.scss';
+
 page {
   min-height: 100%;
   background: #f5efe6;

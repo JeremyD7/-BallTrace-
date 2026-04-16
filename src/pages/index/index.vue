@@ -1,196 +1,313 @@
 <script setup>
 import { computed } from 'vue'
-import { useAppStore } from '@/stores/app'
+import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
 
-const appStore = useAppStore()
-
-const cards = computed(() => [
+const quickActions = [
   {
-    title: 'H5 与移动端共用',
-    description: '基于 uni-app + Vue 3 + Vite，页面与状态逻辑一套维护。'
+    key: 'match',
+    title: '约球',
+    caption: '快速发起一场球局',
+    icon: '◎'
   },
   {
-    title: 'Pinia 已接入',
-    description: `当前站点文案来自 Pinia：${appStore.slogan}`
-  },
-  {
-    title: '适合继续扩展',
-    description: '下一步可以直接接接口、加分包、接入地图与登录能力。'
+    key: 'post',
+    title: '发帖',
+    caption: '分享战报与球场日常',
+    icon: '✎'
   }
-])
+]
+
+const posts = [
+  {
+    id: 1,
+    title: '今晚天府绿道约一场双打，想找两位稳定搭子一起冲',
+    author: '球场拾光',
+    likes: 256,
+    cover: 'linear-gradient(135deg, #4f3725 0%, #d97a3f 100%)'
+  },
+  {
+    id: 2,
+    title: '第一次参加周末球局，整理了一份新手热身动作清单',
+    author: '张三',
+    likes: 189,
+    cover: 'linear-gradient(135deg, #2f3e31 0%, #7db48a 100%)'
+  },
+  {
+    id: 3,
+    title: '市区夜场灯光意外不错，这片球场拍照真的很出片',
+    author: 'Ace慢热',
+    likes: 321,
+    cover: 'linear-gradient(135deg, #2b394f 0%, #6f95c9 100%)'
+  },
+  {
+    id: 4,
+    title: '练完发球后做了组力量恢复，附上我最近在用的节奏安排',
+    author: '后场观察员',
+    likes: 145,
+    cover: 'linear-gradient(135deg, #4a3024 0%, #ad7155 100%)'
+  },
+  {
+    id: 5,
+    title: '球鞋抓地力实测，湿地和硬地两种场景差别比想象里更大',
+    author: '落点实验室',
+    likes: 274,
+    cover: 'linear-gradient(135deg, #3a2542 0%, #996bc4 100%)'
+  },
+  {
+    id: 6,
+    title: '发帖占位卡片示意，后面接接口后可以直接替换成真实内容流',
+    author: 'BallTrace',
+    likes: 98,
+    cover: 'linear-gradient(135deg, #2f2c2c 0%, #6a6661 100%)'
+  }
+]
+
+const leftPosts = computed(() => posts.filter((_, index) => index % 2 === 0))
+const rightPosts = computed(() => posts.filter((_, index) => index % 2 === 1))
+
+function handleActionClick(action) {
+  uni.showToast({
+    title: `${action.title}功能待接入`,
+    icon: 'none'
+  })
+}
+
+function handlePostClick(post) {
+  uni.showToast({
+    title: `打开帖子：${post.author}`,
+    icon: 'none'
+  })
+}
 </script>
 
 <template>
-  <view class="page">
-    <view class="hero">
-      <text class="eyebrow">BALLTRACE</text>
-      <text class="title">{{ appStore.title }}</text>
-      <text class="subtitle">{{ appStore.slogan }}</text>
-    </view>
+  <scroll-view class="page" scroll-y>
+    <view class="page-shell">
+      <view class="brand-row">
+        <image class="brand-logo" src="@/static/images/logo.png" mode="aspectFit" />
+        <text class="brand-subtitle">你的篮球生活平台</text>
+      </view>
 
-    <view class="panel stats-panel">
-      <view
-        v-for="item in appStore.stats"
-        :key="item.label"
-        class="stat-card"
-      >
-        <text class="stat-value">{{ item.value }}</text>
-        <text class="stat-label">{{ item.label }}</text>
+      <view class="action-grid">
+        <view
+          v-for="action in quickActions"
+          :key="action.key"
+          class="action-card"
+          @click="handleActionClick(action)"
+        >
+          <view class="action-icon">
+            <text class="action-icon-text">{{ action.icon }}</text>
+          </view>
+          <text class="action-title">{{ action.title }}</text>
+          <text class="action-caption">{{ action.caption }}</text>
+        </view>
+      </view>
+
+      <view class="section-head">
+        <text class="section-title">最新帖子</text>
+        <text class="section-note">瀑布流静态示意</text>
+      </view>
+
+      <view class="waterfall-grid">
+        <view class="waterfall-column">
+          <PostWaterfallCard
+            v-for="post in leftPosts"
+            :key="post.id"
+            :post="post"
+            @click="handlePostClick(post)"
+          />
+        </view>
+
+        <view class="waterfall-column">
+          <PostWaterfallCard
+            v-for="post in rightPosts"
+            :key="post.id"
+            :post="post"
+            @click="handlePostClick(post)"
+          />
+        </view>
       </view>
     </view>
-
-    <view class="panel">
-      <view
-        v-for="card in cards"
-        :key="card.title"
-        class="feature-card"
-      >
-        <text class="feature-title">{{ card.title }}</text>
-        <text class="feature-desc">{{ card.description }}</text>
-      </view>
-    </view>
-  </view>
+  </scroll-view>
 </template>
 
 <style lang="scss" scoped>
+@import '@/uni.scss';
+
 .page {
   min-height: 100vh;
-  padding: 48rpx 28rpx 64rpx;
   background:
-    radial-gradient(circle at top right, rgba(217, 108, 40, 0.22), transparent 32%),
-    linear-gradient(180deg, #f5efe6 0%, #efe4d5 100%);
+    radial-gradient(circle at top right, rgba(217, 122, 63, 0.22), transparent 24%),
+    linear-gradient(180deg, #121110 0%, #111111 44%, #151311 100%);
 }
 
-.hero {
+.page-shell {
+  padding: 96rpx 28rpx 72rpx;
+}
+
+.brand-row {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 16rpx;
-  padding: 44rpx 34rpx;
+}
+
+.brand-logo {
+  width: 140rpx;
+  height: 66rpx;
+}
+
+.brand-subtitle {
+  color: rgba(255, 247, 240, 0.54);
+  font-size: 32rpx;
+  line-height: 1.5;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20rpx;
+  margin-top: 42rpx;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 190rpx;
+  padding: 28rpx 18rpx;
   border-radius: 32rpx;
-  background: linear-gradient(135deg, #241f1c 0%, #4b2f1f 100%);
-  color: #fffaf5;
-  box-shadow: 0 24rpx 60rpx rgba(36, 31, 28, 0.18);
+  background: linear-gradient(180deg, #242323 0%, #1a1918 100%);
+  box-shadow: 0 18rpx 36rpx rgba(0, 0, 0, 0.22);
 }
 
-.eyebrow {
-  font-size: 22rpx;
-  letter-spacing: 6rpx;
-  opacity: 0.72;
+.action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: rgba(255, 247, 240, 0.08);
 }
 
-.title {
-  font-size: 64rpx;
-  font-weight: 700;
+.action-icon-text {
+  color: $brand-color;
+  font-size: 36rpx;
   line-height: 1;
 }
 
-.subtitle {
-  max-width: 560rpx;
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: rgba(255, 250, 245, 0.84);
+.action-title {
+  margin-top: 18rpx;
+  color: #f4f4f4;
+  font-size: 32rpx;
+  font-weight: 600;
 }
 
-.panel {
-  margin-top: 28rpx;
-}
-
-.stats-panel {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20rpx;
-}
-
-.stat-card,
-.feature-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  padding: 28rpx;
-  border: 1rpx solid rgba(29, 29, 31, 0.08);
-  border-radius: 28rpx;
-  background: rgba(255, 248, 239, 0.88);
-  backdrop-filter: blur(16rpx);
-}
-
-.stat-value {
-  font-size: 44rpx;
-  font-weight: 700;
-  color: #d96c28;
-}
-
-.stat-label {
+.action-caption {
+  margin-top: 10rpx;
+  text-align: center;
   font-size: 24rpx;
   line-height: 1.5;
-  color: rgba(29, 29, 31, 0.7);
+  color: rgba(244, 244, 244, 0.5);
 }
 
-.feature-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1d1d1f;
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 54rpx;
+  margin-bottom: 24rpx;
 }
 
-.feature-desc {
-  font-size: 26rpx;
-  line-height: 1.7;
-  color: rgba(29, 29, 31, 0.76);
+.section-title {
+  color: #d9d9d9;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.section-note {
+  color: rgba(244, 244, 244, 0.42);
+  font-size: 22rpx;
+}
+
+.waterfall-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  align-items: start;
+}
+
+.waterfall-column {
+  min-width: 0;
 }
 
 @media screen and (min-width: 768px) {
-  .page {
+  .page-shell {
     max-width: 960px;
     margin: 0 auto;
-    padding: 32px 24px 72px;
+    padding: 72px 24px 64px;
   }
 
-  .hero {
-    padding: 40px;
-    border-radius: 28px;
+  .brand-row {
+    gap: 10px;
   }
 
-  .eyebrow {
-    font-size: 12px;
-    letter-spacing: 4px;
+  .brand-logo {
+    width: 96px;
+    height: 45px;
   }
 
-  .title {
-    font-size: 56px;
-  }
-
-  .subtitle {
-    max-width: 520px;
+  .brand-subtitle {
     font-size: 18px;
   }
 
-  .panel {
-    margin-top: 20px;
-  }
-
-  .stats-panel {
+  .action-grid {
     gap: 16px;
+    margin-top: 28px;
   }
 
-  .stat-card,
-  .feature-card {
-    padding: 24px;
+  .action-card {
+    min-height: 160px;
+    padding: 24px 18px;
     border-radius: 24px;
   }
 
-  .stat-value {
-    font-size: 32px;
+  .action-icon {
+    width: 52px;
+    height: 52px;
   }
 
-  .stat-label {
-    font-size: 14px;
+  .action-icon-text {
+    font-size: 24px;
   }
 
-  .feature-title {
+  .action-title {
+    margin-top: 12px;
     font-size: 22px;
   }
 
-  .feature-desc {
-    font-size: 15px;
+  .action-caption {
+    margin-top: 8px;
+    font-size: 14px;
+  }
+
+  .section-head {
+    margin-top: 36px;
+    margin-bottom: 18px;
+  }
+
+  .section-title {
+    font-size: 24px;
+  }
+
+  .section-note {
+    font-size: 13px;
+  }
+
+  .waterfall-grid {
+    gap: 16px;
   }
 }
 </style>
