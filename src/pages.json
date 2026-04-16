@@ -18,6 +18,24 @@
         "navigationBarTitleText": "BallTrace",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/community/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/message/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import AppTabBar from '@/components/AppTabBar.vue'
 import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
 
 const quickActions = [
@@ -7,58 +8,64 @@ const quickActions = [
     key: 'match',
     title: '约球',
     caption: '快速发起一场球局',
-    icon: '◎'
+    icon: '/static/images/basketball.svg'
   },
   {
     key: 'post',
     title: '发帖',
     caption: '分享战报与球场日常',
-    icon: '✎'
+    icon: '/static/images/post.svg'
   }
 ]
 
 const posts = [
   {
     id: 1,
-    title: '今晚天府绿道约一场双打，想找两位稳定搭子一起冲',
+    title: '今晚天府体院馆约球',
+    content: '今晚想在天府体院馆打野，想找两位稳定搭子一起冲，节奏友好，欢迎下班后直接来。',
     author: '球场拾光',
     likes: 256,
-    cover: 'linear-gradient(135deg, #4f3725 0%, #d97a3f 100%)'
+    cover: '/static/images/art_theman.jpg'
   },
   {
     id: 2,
-    title: '第一次参加周末球局，整理了一份新手热身动作清单',
+    title: '新手热身动作清单',
+    content: '第一次参加周末球局，整理了一份适合开打前做的热身动作清单，想分享给刚入门的朋友。',
     author: '张三',
     likes: 189,
-    cover: 'linear-gradient(135deg, #2f3e31 0%, #7db48a 100%)'
+    cover: '/static/images/art_thewoman.jpg'
   },
   {
     id: 3,
-    title: '市区夜场灯光意外不错，这片球场拍照真的很出片',
+    title: '市区夜场球场推荐',
+    content: '市区夜场灯光意外不错，这片球场拍照真的很出片，地面反馈也很稳，适合晚上约球。',
     author: 'Ace慢热',
     likes: 321,
-    cover: 'linear-gradient(135deg, #2b394f 0%, #6f95c9 100%)'
+    cover: '/static/images/art_frommoon.jpg'
   },
   {
     id: 4,
-    title: '练完发球后做了组力量恢复，附上我最近在用的节奏安排',
+    title: '发球训练后的恢复安排',
+    content: '练完发球后做了一组力量恢复，把我最近在用的训练和放松节奏整理出来，给大家参考。',
     author: '后场观察员',
     likes: 145,
-    cover: 'linear-gradient(135deg, #4a3024 0%, #ad7155 100%)'
+    cover: '/static/images/theman02.jpg'
   },
   {
     id: 5,
-    title: '球鞋抓地力实测，湿地和硬地两种场景差别比想象里更大',
+    title: '球鞋抓地力实测',
+    content: '测试了同一双球鞋在湿地和硬地两种场景里的表现，抓地差别比想象里更大，分享一下感受。',
     author: '落点实验室',
     likes: 274,
-    cover: 'linear-gradient(135deg, #3a2542 0%, #996bc4 100%)'
+    cover: '/static/images/earth.jpg'
   },
   {
     id: 6,
-    title: '发帖占位卡片示意，后面接接口后可以直接替换成真实内容流',
+    title: '发帖卡片结构示意',
+    content: '这是一个发帖占位卡片示意，后面接接口后可以直接替换成真实内容流和详情内容。',
     author: 'BallTrace',
     likes: 98,
-    cover: 'linear-gradient(135deg, #2f2c2c 0%, #6a6661 100%)'
+    cover: '/static/images/art_frommoon.jpg'
   }
 ]
 
@@ -89,14 +96,9 @@ function handlePostClick(post) {
       </view>
 
       <view class="action-grid">
-        <view
-          v-for="action in quickActions"
-          :key="action.key"
-          class="action-card"
-          @click="handleActionClick(action)"
-        >
+        <view v-for="action in quickActions" :key="action.key" class="action-card" @click="handleActionClick(action)">
           <view class="action-icon">
-            <text class="action-icon-text">{{ action.icon }}</text>
+            <image class="action-icon-image" :src="action.icon" mode="aspectFit" />
           </view>
           <text class="action-title">{{ action.title }}</text>
           <text class="action-caption">{{ action.caption }}</text>
@@ -110,29 +112,20 @@ function handlePostClick(post) {
 
       <view class="waterfall-grid">
         <view class="waterfall-column">
-          <PostWaterfallCard
-            v-for="post in leftPosts"
-            :key="post.id"
-            :post="post"
-            @click="handlePostClick(post)"
-          />
+          <PostWaterfallCard v-for="post in leftPosts" :key="post.id" :post="post" @click="handlePostClick(post)" />
         </view>
 
         <view class="waterfall-column">
-          <PostWaterfallCard
-            v-for="post in rightPosts"
-            :key="post.id"
-            :post="post"
-            @click="handlePostClick(post)"
-          />
+          <PostWaterfallCard v-for="post in rightPosts" :key="post.id" :post="post" @click="handlePostClick(post)" />
         </view>
       </view>
     </view>
+
+    <AppTabBar current="home" />
   </scroll-view>
 </template>
 
 <style lang="scss" scoped>
-@import '@/uni.scss';
 
 .page {
   min-height: 100vh;
@@ -142,7 +135,7 @@ function handlePostClick(post) {
 }
 
 .page-shell {
-  padding: 96rpx 28rpx 72rpx;
+  padding: 96rpx 28rpx 180rpx;
 }
 
 .brand-row {
@@ -192,10 +185,9 @@ function handlePostClick(post) {
   background: rgba(255, 247, 240, 0.08);
 }
 
-.action-icon-text {
-  color: $brand-color;
-  font-size: 36rpx;
-  line-height: 1;
+.action-icon-image {
+  width: 38rpx;
+  height: 38rpx;
 }
 
 .action-title {
@@ -247,7 +239,7 @@ function handlePostClick(post) {
   .page-shell {
     max-width: 960px;
     margin: 0 auto;
-    padding: 72px 24px 64px;
+    padding: 72px 24px 140px;
   }
 
   .brand-row {
@@ -279,8 +271,9 @@ function handlePostClick(post) {
     height: 52px;
   }
 
-  .action-icon-text {
-    font-size: 24px;
+  .action-icon-image {
+    width: 24px;
+    height: 24px;
   }
 
   .action-title {

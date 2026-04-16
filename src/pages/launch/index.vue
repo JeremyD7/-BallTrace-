@@ -28,7 +28,6 @@ function handleJoin() {
 </template>
 
 <style lang="scss" scoped>
-@import '@/uni.scss';
 
 .launch-page {
   position: relative;
@@ -54,8 +53,8 @@ function handleJoin() {
   position: absolute;
   top: 56rpx;
   left: 10rpx;
-  width: 300rpx;
-  height: 88rpx;
+  width: 360rpx;
+  height: 108rpx;
 }
 
 .launch-copy {
@@ -133,8 +132,8 @@ function handleJoin() {
   .launch-logo {
     top: 55px;
     left: 29px;
-    width: 120px;
-    height: 52px;
+    width: 156px;
+    height: 68px;
   }
 
   .launch-copy {

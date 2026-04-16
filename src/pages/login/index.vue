@@ -99,7 +99,6 @@ function togglePasswordVisibility() {
 </template>
 
 <style lang="scss" scoped>
-@import '@/uni.scss';
 
 .login-page {
   min-height: 100vh;
