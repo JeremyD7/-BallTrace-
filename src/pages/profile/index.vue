@@ -1,84 +1,564 @@
 <script setup>
+import { ref } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
+
+const activeTab = ref('posts')
+
+const stats = [
+  { label: '获赞与收藏', value: '2.3k' },
+  { label: '关注', value: '128' },
+  { label: '粉丝', value: '482' }
+]
+
+const tags = ['篮球日常', '夜场爱好者', '周末约球', '投篮训练']
+
+const shortcuts = [
+  {
+    key: 'edit',
+    title: '编辑资料',
+    desc: '完善头像、简介和偏好'
+  },
+  {
+    key: 'likes',
+    title: '我的喜欢',
+    desc: '收藏过的帖子和内容'
+  },
+  {
+    key: 'history',
+    title: '浏览记录',
+    desc: '最近看过的帖子内容'
+  },
+  {
+    key: 'settings',
+    title: '设置',
+    desc: '账号、安全和通知设置'
+  }
+]
+
+const posts = [
+  {
+    id: 1,
+    cover: '/static/images/art_theman.jpg'
+  },
+  {
+    id: 2,
+    cover: '/static/images/art_thewoman.jpg'
+  },
+  {
+    id: 3,
+    cover: '/static/images/art_frommoon.jpg'
+  },
+  {
+    id: 4,
+    cover: '/static/images/art002e009007~large.jpg'
+  },
+  {
+    id: 5,
+    cover: '/static/images/art_thewoman.jpg'
+  },
+  {
+    id: 6,
+    cover: '/static/images/art_theman.jpg'
+  }
+]
+
+function handleShortcut(item) {
+  uni.showToast({
+    title: `${item.title}功能待接入`,
+    icon: 'none'
+  })
+}
+
+function handleTabChange(tab) {
+  activeTab.value = tab
+}
+
+function handlePostClick() {
+  uni.showToast({
+    title: '帖子详情待接入',
+    icon: 'none'
+  })
+}
 </script>
 
 <template>
-  <view class="placeholder-page">
-    <view class="placeholder-shell">
-      <text class="placeholder-eyebrow">PROFILE</text>
-      <text class="placeholder-title">个人中心</text>
-      <text class="placeholder-copy">这里先放一个静态占位页，后续可以接个人资料、战绩、收藏和设置内容。</text>
+  <scroll-view class="profile-page" scroll-y>
+    <view class="profile-shell">
+      <view class="profile-topbar">
+        <text class="page-title">我的</text>
+      </view>
+
+      <view class="profile-header">
+        <image class="profile-avatar" src="/static/images/jeremy.webp" mode="aspectFill" />
+
+        <view class="profile-main">
+          <view class="profile-row">
+            <text class="profile-name">Evan</text>
+            <view class="profile-badge">
+              <text class="profile-badge-text">Lv.2</text>
+            </view>
+          </view>
+
+          <text class="profile-id">BALLTRACE 号：evan_24</text>
+          <text class="profile-bio">生命不息，运动不止。记录每一次约球、训练和球场日常。</text>
+
+          <view class="profile-tags">
+            <text v-for="tag in tags" :key="tag" class="profile-tag">{{ tag }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="stats-row">
+        <view v-for="item in stats" :key="item.label" class="stat-item">
+          <text class="stat-value">{{ item.value }}</text>
+          <text class="stat-label">{{ item.label }}</text>
+        </view>
+      </view>
+
+      <view class="action-row">
+        <button class="primary-button" hover-class="button-hover" @click="handleShortcut(shortcuts[0])">
+          编辑资料
+        </button>
+        <button class="ghost-button" hover-class="button-hover" @click="handleShortcut(shortcuts[1])">
+          分享主页
+        </button>
+      </view>
+
+      <view class="shortcut-grid">
+        <view
+          v-for="item in shortcuts"
+          :key="item.key"
+          class="shortcut-card"
+          @click="handleShortcut(item)"
+        >
+          <text class="shortcut-title">{{ item.title }}</text>
+          <text class="shortcut-desc">{{ item.desc }}</text>
+        </view>
+      </view>
+
+      <view class="content-panel">
+        <view class="content-tabs">
+          <view
+            class="content-tab"
+            :class="{ 'content-tab-active': activeTab === 'posts' }"
+            @click="handleTabChange('posts')"
+          >
+            <text class="content-tab-text">笔记</text>
+          </view>
+          <view
+            class="content-tab"
+            :class="{ 'content-tab-active': activeTab === 'saved' }"
+            @click="handleTabChange('saved')"
+          >
+            <text class="content-tab-text">收藏</text>
+          </view>
+        </view>
+
+        <view class="content-grid">
+          <view
+            v-for="item in posts"
+            :key="`${activeTab}-${item.id}`"
+            class="content-card"
+            @click="handlePostClick"
+          >
+            <image class="content-cover" :src="item.cover" mode="aspectFill" />
+          </view>
+        </view>
+      </view>
     </view>
 
     <AppTabBar current="profile" />
-  </view>
+  </scroll-view>
 </template>
 
 <style lang="scss" scoped>
-
-.placeholder-page {
+.profile-page {
   min-height: 100vh;
-  padding: 96rpx 28rpx 180rpx;
   background:
-    radial-gradient(circle at top right, rgba(217, 122, 63, 0.22), transparent 24%),
+    radial-gradient(circle at top right, rgba(217, 122, 63, 0.18), transparent 22%),
     linear-gradient(180deg, #121110 0%, #111111 44%, #151311 100%);
 }
 
-.placeholder-shell {
-  padding: 44rpx 36rpx;
-  border: 1rpx solid rgba(255, 247, 240, 0.08);
-  border-radius: 32rpx;
-  background: linear-gradient(180deg, #242323 0%, #1a1918 100%);
+.profile-shell {
+  padding: 96rpx 28rpx 188rpx;
 }
 
-.placeholder-eyebrow {
-  color: rgba(255, 247, 240, 0.54);
-  font-size: 22rpx;
-  letter-spacing: 6rpx;
+.profile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.placeholder-title {
-  display: block;
-  margin-top: 18rpx;
+.page-title {
   color: #fff7f0;
-  font-size: 52rpx;
+  font-size: 44rpx;
   font-weight: 700;
 }
 
-.placeholder-copy {
+.profile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 24rpx;
+  margin-top: 34rpx;
+}
+
+.profile-avatar {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4rpx rgba(255, 247, 240, 0.08);
+}
+
+.profile-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.profile-name {
+  color: #fff7f0;
+  font-size: 42rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.profile-badge {
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(217, 122, 63, 0.16);
+}
+
+.profile-badge-text {
+  color: #f8c7a7;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.profile-id {
+  display: block;
+  margin-top: 10rpx;
+  color: rgba(255, 247, 240, 0.44);
+  font-size: 22rpx;
+}
+
+.profile-bio {
   display: block;
   margin-top: 18rpx;
-  color: rgba(255, 247, 240, 0.68);
-  font-size: 28rpx;
+  color: rgba(255, 247, 240, 0.78);
+  font-size: 26rpx;
   line-height: 1.7;
 }
 
+.profile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.profile-tag {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 247, 240, 0.08);
+  color: rgba(255, 247, 240, 0.72);
+  font-size: 22rpx;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 40rpx;
+}
+
+.stat-item {
+  padding: 22rpx 18rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 247, 240, 0.05);
+  border: 1rpx solid rgba(255, 247, 240, 0.06);
+}
+
+.stat-value {
+  display: block;
+  color: #fff7f0;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.stat-label {
+  display: block;
+  margin-top: 8rpx;
+  color: rgba(255, 247, 240, 0.52);
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 30rpx;
+}
+
+.primary-button,
+.ghost-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 84rpx;
+  padding: 0;
+  border: 0;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.primary-button {
+  background: #f4f4f4;
+  color: #111111;
+}
+
+.ghost-button {
+  background: rgba(255, 247, 240, 0.08);
+  color: #fff7f0;
+}
+
+.primary-button::after,
+.ghost-button::after {
+  border: 0;
+}
+
+.button-hover {
+  opacity: 0.86;
+}
+
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 30rpx;
+}
+
+.shortcut-card {
+  padding: 28rpx 24rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(180deg, rgba(38, 36, 35, 0.96) 0%, rgba(27, 26, 25, 0.96) 100%);
+  border: 1rpx solid rgba(255, 247, 240, 0.06);
+}
+
+.shortcut-title {
+  display: block;
+  color: #fff7f0;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.shortcut-desc {
+  display: block;
+  margin-top: 10rpx;
+  color: rgba(255, 247, 240, 0.5);
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.content-panel {
+  margin-top: 38rpx;
+}
+
+.content-tabs {
+  display: flex;
+  gap: 18rpx;
+  margin-bottom: 22rpx;
+}
+
+.content-tab {
+  position: relative;
+  padding-bottom: 10rpx;
+}
+
+.content-tab-text {
+  color: rgba(255, 247, 240, 0.5);
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.content-tab-active .content-tab-text {
+  color: #fff7f0;
+  font-weight: 700;
+}
+
+.content-tab-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4rpx;
+  border-radius: 999rpx;
+  background: #fff7f0;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+}
+
+.content-card {
+  position: relative;
+  aspect-ratio: 1 / 1.28;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: #242323;
+}
+
+.content-cover {
+  width: 100%;
+  height: 100%;
+}
+
 @media screen and (min-width: 768px) {
-  .placeholder-page {
+  .profile-shell {
     max-width: 960px;
     margin: 0 auto;
-    padding: 72px 24px 140px;
+    padding: 72px 24px 148px;
   }
 
-  .placeholder-shell {
-    padding: 32px;
-    border-radius: 28px;
+  .page-title {
+    font-size: 32px;
+  }
+
+  .profile-header {
+    gap: 20px;
+    margin-top: 26px;
+  }
+
+  .profile-avatar {
+    width: 88px;
+    height: 88px;
+    box-shadow: 0 0 0 3px rgba(255, 247, 240, 0.08);
+  }
+
+  .profile-row {
+    gap: 10px;
+  }
+
+  .profile-name {
+    font-size: 32px;
+  }
+
+  .profile-badge {
+    padding: 4px 10px;
+  }
+
+  .profile-badge-text {
+    font-size: 12px;
+  }
+
+  .profile-id {
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  .profile-bio {
+    margin-top: 14px;
+    font-size: 16px;
+  }
+
+  .profile-tags {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .profile-tag {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .stats-row {
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .stat-item {
+    padding: 18px 16px;
+    border-radius: 20px;
     border-width: 1px;
   }
 
-  .placeholder-eyebrow {
-    font-size: 12px;
-    letter-spacing: 4px;
+  .stat-value {
+    font-size: 24px;
   }
 
-  .placeholder-title {
-    margin-top: 12px;
-    font-size: 40px;
+  .stat-label {
+    margin-top: 6px;
+    font-size: 13px;
   }
 
-  .placeholder-copy {
-    margin-top: 14px;
+  .action-row {
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .primary-button,
+  .ghost-button {
+    height: 54px;
     font-size: 16px;
+  }
+
+  .shortcut-grid {
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .shortcut-card {
+    padding: 22px 20px;
+    border-radius: 22px;
+    border-width: 1px;
+  }
+
+  .shortcut-title {
+    font-size: 18px;
+  }
+
+  .shortcut-desc {
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  .content-panel {
+    margin-top: 30px;
+  }
+
+  .content-tabs {
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .content-tab {
+    padding-bottom: 8px;
+  }
+
+  .content-tab-text {
+    font-size: 16px;
+  }
+
+  .content-tab-active::after {
+    height: 3px;
+  }
+
+  .content-grid {
+    gap: 10px;
+  }
+
+  .content-card {
+    border-radius: 16px;
   }
 }
 </style>
