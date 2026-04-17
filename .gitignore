@@ -1,3 +1,29 @@
-node_modules
-dist
-unpackage
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+unpackage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Test output
+coverage/
+.nyc_output/
