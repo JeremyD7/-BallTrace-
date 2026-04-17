@@ -115,15 +115,6 @@ function handlePostClick() {
         </view>
       </view>
 
-      <view class="action-row">
-        <button class="primary-button" hover-class="button-hover" @click="handleShortcut(shortcuts[0])">
-          编辑资料
-        </button>
-        <button class="ghost-button" hover-class="button-hover" @click="handleShortcut(shortcuts[1])">
-          分享主页
-        </button>
-      </view>
-
       <view class="shortcut-grid">
         <view
           v-for="item in shortcuts"
@@ -299,20 +290,13 @@ function handlePostClick() {
   line-height: 1.4;
 }
 
-.action-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 30rpx;
-}
-
 .primary-button,
 .ghost-button {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 84rpx;
-  padding: 0;
+  padding: 0 40rpx;
   border: 0;
   border-radius: 999rpx;
   font-size: 28rpx;
@@ -501,14 +485,10 @@ function handlePostClick() {
     font-size: 13px;
   }
 
-  .action-row {
-    gap: 12px;
-    margin-top: 22px;
-  }
-
   .primary-button,
   .ghost-button {
     height: 54px;
+    padding: 0 28px;
     font-size: 16px;
   }
 
