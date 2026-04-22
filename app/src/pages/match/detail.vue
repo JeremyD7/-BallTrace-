@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getMatchById } from '@/data/matches'
+import { getMatchById } from '@/pages/data/matches'
 
 const matchId = ref(1)
 

@@ -1,6 +1,6 @@
 <script setup>
 import MatchCard from '@/components/MatchCard.vue'
-import { matchPosts } from '@/data/matches'
+import { matchPosts } from '@/pages/data/matches'
 
 function handleCreate() {
   uni.showToast({

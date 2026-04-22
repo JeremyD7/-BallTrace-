@@ -1,41 +1,55 @@
 <script setup>
 import { computed, ref } from 'vue'
 
+const mode = ref('login')
 const account = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const agreed = ref(true)
 const showPassword = ref(false)
+const showConfirmPassword = ref(false)
+const isSwitching = ref(false)
 
-const canLogin = computed(() => account.value.trim().length > 0 && password.value.trim().length > 0 && agreed.value)
+const isRegisterMode = computed(() => mode.value === 'register')
+const cardTitle = computed(() => (isRegisterMode.value ? '创建你的账号' : '账号密码登录'))
+const cardDesc = computed(() =>
+  isRegisterMode.value
+    ? '注册后即可记录比赛、发布约球并管理个人资料'
+    : '欢迎回来，继续你的球场记录与约球旅程'
+)
+const submitText = computed(() => (isRegisterMode.value ? '注册并登录' : '登录'))
+const switchPrompt = computed(() => (isRegisterMode.value ? '已经有账号了？' : '还没有账号？'))
+const switchActionText = computed(() => (isRegisterMode.value ? '去登录' : '去注册'))
 
-function handleLogin() {
-  if (!account.value.trim()) {
-    uni.showToast({
-      title: '请输入账号',
-      icon: 'none'
-    })
+const canSubmit = computed(() => {
+  const hasBaseFields = account.value.trim().length > 0 && password.value.trim().length > 0 && agreed.value
+
+  if (!isRegisterMode.value) {
+    return hasBaseFields
+  }
+
+  return hasBaseFields && confirmPassword.value.trim().length > 0
+})
+
+function switchMode(nextMode) {
+  if (mode.value === nextMode) {
     return
   }
 
-  if (!password.value.trim()) {
-    uni.showToast({
-      title: '请输入密码',
-      icon: 'none'
-    })
-    return
-  }
+  isSwitching.value = true
+  mode.value = nextMode
+  password.value = ''
+  confirmPassword.value = ''
+  showPassword.value = false
+  showConfirmPassword.value = false
 
-  if (!agreed.value) {
-    uni.showToast({
-      title: '请先同意服务协议和隐私协议',
-      icon: 'none'
-    })
-    return
-  }
+  setTimeout(() => {
+    isSwitching.value = false
+  }, 220)
+}
 
-  uni.reLaunch({
-    url: '/pages/index/index'
-  })
+function toggleMode() {
+  switchMode(isRegisterMode.value ? 'login' : 'register')
 }
 
 function toggleAgreement() {
@@ -44,6 +58,92 @@ function toggleAgreement() {
 
 function togglePasswordVisibility() {
   showPassword.value = !showPassword.value
+}
+
+function toggleConfirmPasswordVisibility() {
+  showConfirmPassword.value = !showConfirmPassword.value
+}
+
+function enterApp() {
+  uni.reLaunch({
+    url: '/pages/index/index'
+  })
+}
+
+function validateBaseFields() {
+  if (!account.value.trim()) {
+    uni.showToast({
+      title: '请输入账号',
+      icon: 'none'
+    })
+    return false
+  }
+
+  if (!password.value.trim()) {
+    uni.showToast({
+      title: '请输入密码',
+      icon: 'none'
+    })
+    return false
+  }
+
+  if (!agreed.value) {
+    uni.showToast({
+      title: '请先同意服务协议和隐私协议',
+      icon: 'none'
+    })
+    return false
+  }
+
+  return true
+}
+
+function handleLogin() {
+  if (!validateBaseFields()) {
+    return
+  }
+
+  enterApp()
+}
+
+function handleRegister() {
+  if (!validateBaseFields()) {
+    return
+  }
+
+  if (!confirmPassword.value.trim()) {
+    uni.showToast({
+      title: '请确认密码',
+      icon: 'none'
+    })
+    return
+  }
+
+  if (confirmPassword.value !== password.value) {
+    uni.showToast({
+      title: '两次输入的密码不一致',
+      icon: 'none'
+    })
+    return
+  }
+
+  uni.showToast({
+    title: '注册成功',
+    icon: 'success'
+  })
+
+  setTimeout(() => {
+    enterApp()
+  }, 300)
+}
+
+function handleSubmit() {
+  if (isRegisterMode.value) {
+    handleRegister()
+    return
+  }
+
+  handleLogin()
 }
 </script>
 
@@ -54,14 +154,28 @@ function togglePasswordVisibility() {
         <image class="brand-logo" src="@/static/images/logo.png" mode="aspectFit" />
         <view class="brand-copy">
           <text class="brand-mark">BALLTRACE</text>
-          <text class="brand-title">欢迎登录球迹派</text>
-          <text class="brand-subtitle">连接你的篮球生活</text>
+          <text class="brand-title">欢迎来到球迹</text>
+          <text class="brand-subtitle">连接你的篮球生活，记录比赛、训练和每次约球</text>
         </view>
       </view>
 
       <view class="login-card">
-        <text class="card-title">账号密码登录</text>
-        <text class="card-desc"></text>
+        <view class="mode-switch">
+          <view class="mode-switch-thumb" :class="{ 'mode-switch-thumb-register': isRegisterMode }"></view>
+          <view class="mode-switch-item" :class="{ 'mode-switch-item-active': mode === 'login' }"
+            @click="switchMode('login')">
+            <text class="mode-switch-text">登录</text>
+          </view>
+          <view class="mode-switch-item" :class="{ 'mode-switch-item-active': mode === 'register' }"
+            @click="switchMode('register')">
+            <text class="mode-switch-text">注册</text>
+          </view>
+        </view>
+
+        <view class="auth-copy" :class="{ 'auth-copy-switching': isSwitching }">
+          <text class="card-title">{{ cardTitle }}</text>
+          <text class="card-desc">{{ cardDesc }}</text>
+        </view>
 
         <view class="form-field">
           <text class="field-label">账号</text>
@@ -74,15 +188,36 @@ function togglePasswordVisibility() {
           <view class="password-row">
             <input v-model="password" class="form-input password-input" :password="!showPassword" maxlength="32"
               placeholder="请输入密码" placeholder-class="form-placeholder" />
-            <text class="password-toggle" @click.stop="togglePasswordVisibility">
-              {{ showPassword ? 'hide' : 'show' }}
-            </text>
+            <view class="password-toggle" @click.stop="togglePasswordVisibility">
+              <image
+                class="password-toggle-icon"
+                :src="showPassword ? '/static/login/closeeye.svg' : '/static/login/eye.svg'"
+                mode="aspectFit"
+              />
+            </view>
           </view>
         </view>
 
-        <button class="login-button" :class="{ 'login-button-disabled': !canLogin }" hover-class="login-button-hover"
-          @click="handleLogin">
-          登录
+        <view class="confirm-field-shell" :class="{ 'confirm-field-shell-active': isRegisterMode }">
+          <view class="form-field form-field-password confirm-field">
+            <text class="field-label">确认密码</text>
+            <view class="password-row">
+              <input v-model="confirmPassword" class="form-input password-input" :password="!showConfirmPassword"
+                maxlength="32" placeholder="请再次输入密码" placeholder-class="form-placeholder" />
+              <view class="password-toggle" @click.stop="toggleConfirmPasswordVisibility">
+                <image
+                  class="password-toggle-icon"
+                  :src="showConfirmPassword ? '/static/login/closeeye.svg' : '/static/login/eye.svg'"
+                  mode="aspectFit"
+                />
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <button class="login-button" :class="{ 'login-button-disabled': !canSubmit }" hover-class="login-button-hover"
+          @click="handleSubmit">
+          <text class="submit-text" :class="{ 'submit-text-switching': isSwitching }">{{ submitText }}</text>
         </button>
 
         <view class="agreement-row" @click="toggleAgreement">
@@ -93,13 +228,17 @@ function togglePasswordVisibility() {
             我已阅读并同意《服务协议》和《隐私协议》
           </text>
         </view>
+
+        <view class="mode-helper">
+          <text class="mode-helper-text">{{ switchPrompt }}</text>
+          <text class="mode-helper-action" @click="toggleMode">{{ switchActionText }}</text>
+        </view>
       </view>
     </view>
   </view>
 </template>
 
 <style lang="scss" scoped>
-
 .login-page {
   min-height: 100vh;
   padding: 56rpx 28rpx 72rpx;
@@ -156,7 +295,7 @@ function togglePasswordVisibility() {
 }
 
 .login-card {
-  padding: 40rpx 32rpx 36rpx;
+  padding: 32rpx 32rpx 36rpx;
   border: 1rpx solid rgba(255, 247, 240, 0.08);
   border-radius: 32rpx;
   background:
@@ -166,8 +305,70 @@ function togglePasswordVisibility() {
   backdrop-filter: blur(18rpx);
 }
 
+.mode-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  width: 100%;
+  padding: 10rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 248, 239, 0.06);
+  box-shadow: inset 0 0 0 1rpx rgba(255, 247, 240, 0.04);
+  overflow: hidden;
+}
+
+.mode-switch-thumb {
+  position: absolute;
+  top: 10rpx;
+  left: 10rpx;
+  width: calc(50% - 15rpx);
+  height: 76rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, rgba(198, 220, 85, 0.96) 0%, rgba(201, 104, 43, 0.96) 100%);
+  box-shadow: 0 14rpx 28rpx rgba(198, 220, 85, 0.14);
+  transition: transform 0.24s ease;
+}
+
+.mode-switch-thumb-register {
+  transform: translateX(calc(100% + 10rpx));
+}
+
+.mode-switch-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  height: 76rpx;
+  border-radius: 999rpx;
+  transition: transform 0.18s ease;
+}
+
+.mode-switch-text {
+  color: rgba(255, 247, 240, 0.58);
+  font-size: 28rpx;
+  font-weight: 600;
+  transition: color 0.24s ease;
+}
+
+.mode-switch-item-active .mode-switch-text {
+  color: #111111;
+}
+
+.auth-copy {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.auth-copy-switching {
+  opacity: 0.72;
+  transform: translateY(4rpx);
+}
+
 .card-title {
   display: block;
+  margin-top: 32rpx;
   color: #fff7f0;
   font-size: 38rpx;
   font-weight: 700;
@@ -186,7 +387,7 @@ function togglePasswordVisibility() {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  margin-top: 40rpx;
+  margin-top: 32rpx;
   padding: 0 24rpx;
   border: 2rpx solid rgba(217, 122, 63, 0.18);
   border-radius: 24rpx;
@@ -195,6 +396,24 @@ function togglePasswordVisibility() {
 }
 
 .form-field-password {
+  margin-top: 24rpx;
+}
+
+.confirm-field-shell {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-10rpx);
+  transition: max-height 0.26s ease, opacity 0.2s ease, transform 0.26s ease;
+}
+
+.confirm-field-shell-active {
+  max-height: 220rpx;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.confirm-field {
   margin-top: 24rpx;
 }
 
@@ -222,11 +441,17 @@ function togglePasswordVisibility() {
 }
 
 .password-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  color: $brand-color;
-  font-size: 24rpx;
-  font-weight: 600;
-  line-height: 1.3;
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.password-toggle-icon {
+  width: 34rpx;
+  height: 34rpx;
 }
 
 .form-placeholder {
@@ -249,6 +474,15 @@ function togglePasswordVisibility() {
   font-weight: 600;
   box-shadow: 0 18rpx 44rpx $brand-shadow-soft;
   transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.submit-text {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.submit-text-switching {
+  opacity: 0.72;
+  transform: translateY(2rpx);
 }
 
 .login-button::after {
@@ -301,6 +535,25 @@ function togglePasswordVisibility() {
   line-height: 1.6;
 }
 
+.mode-helper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  margin-top: 26rpx;
+}
+
+.mode-helper-text {
+  color: rgba(255, 247, 240, 0.5);
+  font-size: 24rpx;
+}
+
+.mode-helper-action {
+  color: $brand-color;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
 @media screen and (min-width: 768px) {
   .login-page {
     padding: 48px 24px 64px;
@@ -342,11 +595,36 @@ function togglePasswordVisibility() {
   }
 
   .login-card {
-    padding: 32px;
+    padding: 24px 32px 32px;
     border-radius: 28px;
   }
 
+  .mode-switch {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .mode-switch-thumb {
+    top: 6px;
+    left: 6px;
+    width: calc(50% - 9px);
+    height: 48px;
+  }
+
+  .mode-switch-thumb-register {
+    transform: translateX(calc(100% + 6px));
+  }
+
+  .mode-switch-item {
+    height: 48px;
+  }
+
+  .mode-switch-text {
+    font-size: 15px;
+  }
+
   .card-title {
+    margin-top: 24px;
     font-size: 28px;
   }
 
@@ -367,6 +645,14 @@ function togglePasswordVisibility() {
     margin-top: 16px;
   }
 
+  .confirm-field {
+    margin-top: 16px;
+  }
+
+  .confirm-field-shell-active {
+    max-height: 146px;
+  }
+
   .field-label {
     padding-top: 16px;
     font-size: 14px;
@@ -382,7 +668,13 @@ function togglePasswordVisibility() {
   }
 
   .password-toggle {
-    font-size: 14px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .password-toggle-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .login-button {
@@ -408,8 +700,15 @@ function togglePasswordVisibility() {
     font-size: 12px;
   }
 
-  .agreement-text {
+  .agreement-text,
+  .mode-helper-text,
+  .mode-helper-action {
     font-size: 14px;
+  }
+
+  .mode-helper {
+    gap: 8px;
+    margin-top: 20px;
   }
 }
 </style>
