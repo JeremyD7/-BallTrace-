@@ -1,5 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { login, register } from '@/api/auth'
+
+const AUTH_STORAGE_KEY = 'balltrace_auth'
 
 const mode = ref('login')
 const account = ref('')
@@ -9,6 +12,7 @@ const agreed = ref(true)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const isSwitching = ref(false)
+const isSubmitting = ref(false)
 
 const isRegisterMode = computed(() => mode.value === 'register')
 const cardTitle = computed(() => (isRegisterMode.value ? '创建你的账号' : '账号密码登录'))
@@ -17,7 +21,13 @@ const cardDesc = computed(() =>
     ? '注册后即可记录比赛、发布约球并管理个人资料'
     : '欢迎回来，继续你的球场记录与约球旅程'
 )
-const submitText = computed(() => (isRegisterMode.value ? '注册并登录' : '登录'))
+const submitText = computed(() => {
+  if (isSubmitting.value) {
+    return isRegisterMode.value ? '注册中...' : '登录中...'
+  }
+
+  return isRegisterMode.value ? '注册并登录' : '登录'
+})
 const switchPrompt = computed(() => (isRegisterMode.value ? '已经有账号了？' : '还没有账号？'))
 const switchActionText = computed(() => (isRegisterMode.value ? '去登录' : '去注册'))
 
@@ -25,14 +35,14 @@ const canSubmit = computed(() => {
   const hasBaseFields = account.value.trim().length > 0 && password.value.trim().length > 0 && agreed.value
 
   if (!isRegisterMode.value) {
-    return hasBaseFields
+    return hasBaseFields && !isSubmitting.value
   }
 
-  return hasBaseFields && confirmPassword.value.trim().length > 0
+  return hasBaseFields && confirmPassword.value.trim().length > 0 && !isSubmitting.value
 })
 
 function switchMode(nextMode) {
-  if (mode.value === nextMode) {
+  if (mode.value === nextMode || isSubmitting.value) {
     return
   }
 
@@ -64,68 +74,86 @@ function toggleConfirmPasswordVisibility() {
   showConfirmPassword.value = !showConfirmPassword.value
 }
 
+function saveAuthSession(authResult) {
+  uni.setStorageSync(AUTH_STORAGE_KEY, authResult)
+}
+
 function enterApp() {
   uni.reLaunch({
     url: '/pages/index/index'
   })
 }
 
+function showMessage(title) {
+  uni.showToast({
+    title,
+    icon: 'none'
+  })
+}
+
 function validateBaseFields() {
   if (!account.value.trim()) {
-    uni.showToast({
-      title: '请输入账号',
-      icon: 'none'
-    })
+    showMessage('请输入账号')
+    return false
+  }
+
+  if (account.value.trim().length < 4) {
+    showMessage('账号至少4位')
+    return false
+  }
+
+  if (!/^[a-zA-Z0-9_-]+$/.test(account.value.trim())) {
+    showMessage('账号仅支持字母数字下划线和短横线')
     return false
   }
 
   if (!password.value.trim()) {
-    uni.showToast({
-      title: '请输入密码',
-      icon: 'none'
-    })
+    showMessage('请输入密码')
+    return false
+  }
+
+  if (password.value.trim().length < 6) {
+    showMessage('密码至少6位')
     return false
   }
 
   if (!agreed.value) {
-    uni.showToast({
-      title: '请先同意服务协议和隐私协议',
-      icon: 'none'
-    })
+    showMessage('请先同意服务协议和隐私协议')
     return false
   }
 
   return true
 }
 
-function handleLogin() {
-  if (!validateBaseFields()) {
-    return
-  }
+async function handleLogin() {
+  const authResult = await login({
+    account: account.value.trim(),
+    password: password.value
+  })
 
+  saveAuthSession(authResult)
   enterApp()
 }
 
-function handleRegister() {
-  if (!validateBaseFields()) {
-    return
-  }
-
+async function handleRegister() {
   if (!confirmPassword.value.trim()) {
-    uni.showToast({
-      title: '请确认密码',
-      icon: 'none'
-    })
+    showMessage('请确认密码')
     return
   }
 
   if (confirmPassword.value !== password.value) {
-    uni.showToast({
-      title: '两次输入的密码不一致',
-      icon: 'none'
-    })
+    showMessage('两次输入的密码不一致')
     return
   }
+
+  const normalizedAccount = account.value.trim()
+  const authResult = await register({
+    account: normalizedAccount,
+    password: password.value,
+    nickname: normalizedAccount
+  })
+
+  saveAuthSession(authResult)
 
   uni.showToast({
     title: '注册成功',
@@ -137,13 +165,29 @@ function handleRegister() {
   }, 300)
 }
 
-function handleSubmit() {
-  if (isRegisterMode.value) {
-    handleRegister()
+async function handleSubmit() {
+  if (!canSubmit.value) {
     return
   }
 
-  handleLogin()
+  if (!validateBaseFields()) {
+    return
+  }
+
+  isSubmitting.value = true
+
+  try {
+    if (isRegisterMode.value) {
+      await handleRegister()
+      return
+    }
+
+    await handleLogin()
+  } catch (error) {
+    showMessage(error?.message || '请求失败，请稍后重试')
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -162,12 +206,18 @@ function handleSubmit() {
       <view class="login-card">
         <view class="mode-switch">
           <view class="mode-switch-thumb" :class="{ 'mode-switch-thumb-register': isRegisterMode }"></view>
-          <view class="mode-switch-item" :class="{ 'mode-switch-item-active': mode === 'login' }"
-            @click="switchMode('login')">
+          <view
+            class="mode-switch-item"
+            :class="{ 'mode-switch-item-active': mode === 'login' }"
+            @click="switchMode('login')"
+          >
             <text class="mode-switch-text">登录</text>
           </view>
-          <view class="mode-switch-item" :class="{ 'mode-switch-item-active': mode === 'register' }"
-            @click="switchMode('register')">
+          <view
+            class="mode-switch-item"
+            :class="{ 'mode-switch-item-active': mode === 'register' }"
+            @click="switchMode('register')"
+          >
             <text class="mode-switch-text">注册</text>
           </view>
         </view>
@@ -179,15 +229,26 @@ function handleSubmit() {
 
         <view class="form-field">
           <text class="field-label">账号</text>
-          <input v-model="account" class="form-input" maxlength="32" placeholder="请输入账号"
-            placeholder-class="form-placeholder" />
+          <input
+            v-model="account"
+            class="form-input"
+            maxlength="32"
+            placeholder="请输入账号"
+            placeholder-class="form-placeholder"
+          />
         </view>
 
         <view class="form-field form-field-password">
           <text class="field-label">密码</text>
           <view class="password-row">
-            <input v-model="password" class="form-input password-input" :password="!showPassword" maxlength="32"
-              placeholder="请输入密码" placeholder-class="form-placeholder" />
+            <input
+              v-model="password"
+              class="form-input password-input"
+              :password="!showPassword"
+              maxlength="32"
+              placeholder="请输入密码"
+              placeholder-class="form-placeholder"
+            />
             <view class="password-toggle" @click.stop="togglePasswordVisibility">
               <image
                 class="password-toggle-icon"
@@ -202,8 +263,14 @@ function handleSubmit() {
           <view class="form-field form-field-password confirm-field">
             <text class="field-label">确认密码</text>
             <view class="password-row">
-              <input v-model="confirmPassword" class="form-input password-input" :password="!showConfirmPassword"
-                maxlength="32" placeholder="请再次输入密码" placeholder-class="form-placeholder" />
+              <input
+                v-model="confirmPassword"
+                class="form-input password-input"
+                :password="!showConfirmPassword"
+                maxlength="32"
+                placeholder="请再次输入密码"
+                placeholder-class="form-placeholder"
+              />
               <view class="password-toggle" @click.stop="toggleConfirmPasswordVisibility">
                 <image
                   class="password-toggle-icon"
@@ -215,8 +282,12 @@ function handleSubmit() {
           </view>
         </view>
 
-        <button class="login-button" :class="{ 'login-button-disabled': !canSubmit }" hover-class="login-button-hover"
-          @click="handleSubmit">
+        <button
+          class="login-button"
+          :class="{ 'login-button-disabled': !canSubmit }"
+          hover-class="login-button-hover"
+          @click="handleSubmit"
+        >
           <text class="submit-text" :class="{ 'submit-text-switching': isSwitching }">{{ submitText }}</text>
         </button>
 
