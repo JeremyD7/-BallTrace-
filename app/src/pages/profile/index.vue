@@ -12,29 +12,6 @@ const stats = [
 
 const tags = ['篮球日常', '夜场爱好者', '周末约球', '投篮训练']
 
-const shortcuts = [
-  {
-    key: 'edit',
-    title: '编辑资料',
-    desc: '完善头像、简介和偏好'
-  },
-  {
-    key: 'likes',
-    title: '我的喜欢',
-    desc: '收藏过的帖子和内容'
-  },
-  {
-    key: 'history',
-    title: '浏览记录',
-    desc: '最近看过的帖子内容'
-  },
-  {
-    key: 'settings',
-    title: '设置',
-    desc: '账号、安全和通知设置'
-  }
-]
-
 const posts = [
   {
     id: 1,
@@ -62,9 +39,9 @@ const posts = [
   }
 ]
 
-function handleShortcut(item) {
+function handleEditProfile() {
   uni.showToast({
-    title: `${item.title}功能待接入`,
+    title: '编辑资料功能待接入',
     icon: 'none'
   })
 }
@@ -94,6 +71,7 @@ function handlePostClick() {
         <view class="profile-main">
           <view class="profile-row">
             <text class="profile-name">Evan</text>
+            <text class="profile-edit" @click="handleEditProfile">编辑</text>
             <view class="profile-badge">
               <text class="profile-badge-text">Lv.2</text>
             </view>
@@ -112,18 +90,6 @@ function handlePostClick() {
         <view v-for="item in stats" :key="item.label" class="stat-item">
           <text class="stat-value">{{ item.value }}</text>
           <text class="stat-label">{{ item.label }}</text>
-        </view>
-      </view>
-
-      <view class="shortcut-grid">
-        <view
-          v-for="item in shortcuts"
-          :key="item.key"
-          class="shortcut-card"
-          @click="handleShortcut(item)"
-        >
-          <text class="shortcut-title">{{ item.title }}</text>
-          <text class="shortcut-desc">{{ item.desc }}</text>
         </view>
       </view>
 
@@ -219,6 +185,13 @@ function handlePostClick() {
   line-height: 1.2;
 }
 
+.profile-edit {
+  color: #c6dc55;
+  font-size: 22rpx;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .profile-badge {
   padding: 6rpx 14rpx;
   border-radius: 999rpx;
@@ -288,67 +261,6 @@ function handlePostClick() {
   color: rgba(255, 247, 240, 0.52);
   font-size: 22rpx;
   line-height: 1.4;
-}
-
-.primary-button,
-.ghost-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 84rpx;
-  padding: 0 40rpx;
-  border: 0;
-  border-radius: 999rpx;
-  font-size: 28rpx;
-  font-weight: 600;
-}
-
-.primary-button {
-  background: #f4f4f4;
-  color: #111111;
-}
-
-.ghost-button {
-  background: rgba(255, 247, 240, 0.08);
-  color: #fff7f0;
-}
-
-.primary-button::after,
-.ghost-button::after {
-  border: 0;
-}
-
-.button-hover {
-  opacity: 0.86;
-}
-
-.shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 30rpx;
-}
-
-.shortcut-card {
-  padding: 28rpx 24rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(180deg, rgba(38, 36, 35, 0.96) 0%, rgba(27, 26, 25, 0.96) 100%);
-  border: 1rpx solid rgba(255, 247, 240, 0.06);
-}
-
-.shortcut-title {
-  display: block;
-  color: #fff7f0;
-  font-size: 30rpx;
-  font-weight: 600;
-}
-
-.shortcut-desc {
-  display: block;
-  margin-top: 10rpx;
-  color: rgba(255, 247, 240, 0.5);
-  font-size: 22rpx;
-  line-height: 1.6;
 }
 
 .content-panel {
@@ -437,6 +349,10 @@ function handlePostClick() {
     font-size: 32px;
   }
 
+  .profile-edit {
+    font-size: 13px;
+  }
+
   .profile-badge {
     padding: 4px 10px;
   }
@@ -482,33 +398,6 @@ function handlePostClick() {
 
   .stat-label {
     margin-top: 6px;
-    font-size: 13px;
-  }
-
-  .primary-button,
-  .ghost-button {
-    height: 54px;
-    padding: 0 28px;
-    font-size: 16px;
-  }
-
-  .shortcut-grid {
-    gap: 12px;
-    margin-top: 22px;
-  }
-
-  .shortcut-card {
-    padding: 22px 20px;
-    border-radius: 22px;
-    border-width: 1px;
-  }
-
-  .shortcut-title {
-    font-size: 18px;
-  }
-
-  .shortcut-desc {
-    margin-top: 8px;
     font-size: 13px;
   }
 
