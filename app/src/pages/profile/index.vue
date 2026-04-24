@@ -1,8 +1,11 @@
 <script setup>
 import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import AppTabBar from '@/components/AppTabBar.vue'
 
+const AUTH_STORAGE_KEY = 'balltrace_auth'
 const activeTab = ref('posts')
+const profileNickname = ref('球友')
 
 const stats = [
   { label: '获赞与收藏', value: '2.3k' },
@@ -39,6 +42,17 @@ const posts = [
   }
 ]
 
+function loadProfileFromStorage() {
+  const authSession = uni.getStorageSync(AUTH_STORAGE_KEY)
+  const user = authSession?.user || {}
+
+  profileNickname.value = user.nickname || user.account || '球友'
+}
+
+onShow(() => {
+  loadProfileFromStorage()
+})
+
 function handleEditProfile() {
   uni.showToast({
     title: '编辑资料功能待接入',
@@ -70,7 +84,7 @@ function handlePostClick() {
 
         <view class="profile-main">
           <view class="profile-row">
-            <text class="profile-name">Evan</text>
+            <text class="profile-name">{{ profileNickname }}</text>
             <text class="profile-edit" @click="handleEditProfile">编辑</text>
             <view class="profile-badge">
               <text class="profile-badge-text">Lv.2</text>
