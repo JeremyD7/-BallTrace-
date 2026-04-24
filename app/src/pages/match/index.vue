@@ -74,7 +74,7 @@ function handleBack() {
 
 .topbar-back {
   color: #f4f4f4;
-  font-size: 44rpx;
+  font-size: 58rpx;
   line-height: 1;
 }
 
@@ -98,14 +98,14 @@ function handleBack() {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background: #c6dc55;
+  background: $brand-color;
   color: #111111;
   font-size: 28rpx;
   font-weight: 700;
 }
 
 .topbar-action-text {
-  color: #c6dc55;
+  color: $brand-color;
   font-size: 28rpx;
   font-weight: 600;
 }
@@ -139,7 +139,7 @@ function handleBack() {
   }
 
   .topbar-back {
-    font-size: 30px;
+    font-size: 38px;
   }
 
   .topbar-title {
