@@ -146,9 +146,8 @@ function handleCreatePost() {
 }
 
 function handlePostClick(post) {
-  uni.showToast({
-    title: `${post.title} 详情待接入`,
-    icon: 'none'
+  uni.navigateTo({
+    url: `/pages/community/detail?id=${post.id}`
   })
 }
 </script>
