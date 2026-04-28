@@ -23,3 +23,30 @@ export function createCommunityPost(data) {
     data
   })
 }
+
+export function getCommunityPostDetail(id) {
+  return request({
+    url: `/community/posts/${id}`
+  })
+}
+
+export function getCommunityPostComments(postId) {
+  return request({
+    url: `/community/posts/${postId}/comments`
+  })
+}
+
+export function likeCommunityPost(id) {
+  return request({
+    url: `/community/posts/${id}/like`,
+    method: 'POST'
+  })
+}
+
+export function createCommunityComment(postId, data) {
+  return request({
+    url: `/community/posts/${postId}/comments`,
+    method: 'POST',
+    data
+  })
+}
