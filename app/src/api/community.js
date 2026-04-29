@@ -24,6 +24,16 @@ export function createCommunityPost(data) {
   })
 }
 
+export function uploadCommunityMedia(filePath) {
+  return request({
+    url: '/community/media',
+    method: 'POST',
+    data: {
+      filePath
+    }
+  })
+}
+
 export function getCommunityPostDetail(id) {
   return request({
     url: `/community/posts/${id}`

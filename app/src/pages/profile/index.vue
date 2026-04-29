@@ -40,12 +40,20 @@ async function loadProfile() {
   try {
     await authStore.fetchProfile()
   } catch (error) {
-    authStore.logout()
+    if (error?.statusCode === 401 || error?.statusCode === 403) {
+      authStore.logout()
+      uni.showToast({
+        title: error?.message || '请重新登录',
+        icon: 'none'
+      })
+      setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 300)
+      return
+    }
+
     uni.showToast({
-      title: error?.message || '请重新登录',
+      title: '个人资料接口待接入',
       icon: 'none'
     })
-    setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 300)
   } finally {
     loading.value = false
   }

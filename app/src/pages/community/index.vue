@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
+import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
 
 const activeTab = ref('recommend')
 const searchKeyword = ref('')
@@ -139,9 +140,8 @@ function setActiveTab(key) {
 }
 
 function handleCreatePost() {
-  uni.showToast({
-    title: '发布笔记待接入',
-    icon: 'none'
+  uni.navigateTo({
+    url: '/pages/community/create'
   })
 }
 
@@ -190,59 +190,21 @@ function handlePostClick(post) {
 
       <view v-if="visiblePosts.length" class="waterfall-grid">
         <view class="waterfall-column">
-          <view
+          <PostWaterfallCard
             v-for="post in leftPosts"
             :key="post.id"
-            class="post-card"
+            :post="post"
             @click="handlePostClick(post)"
-          >
-            <image class="post-cover" :src="post.cover" mode="aspectFill" />
-            <view class="post-overlay" />
-            <view class="post-body">
-              <text class="post-title">{{ post.title }}</text>
-              <text class="post-content">{{ post.content }}</text>
-              <view class="tag-row">
-                <text v-for="tag in post.tags" :key="tag" class="tag-item">#{{ tag }}</text>
-              </view>
-              <view class="post-footer">
-                <view class="author">
-                  <image class="author-avatar" :src="post.avatar" mode="aspectFill" />
-                  <text class="author-name">{{ post.author }}</text>
-                </view>
-                <view class="metrics">
-                  <text class="metric-text">♥ {{ post.likes }}</text>
-                </view>
-              </view>
-            </view>
-          </view>
+          />
         </view>
 
         <view class="waterfall-column">
-          <view
+          <PostWaterfallCard
             v-for="post in rightPosts"
             :key="post.id"
-            class="post-card"
+            :post="post"
             @click="handlePostClick(post)"
-          >
-            <image class="post-cover" :src="post.cover" mode="aspectFill" />
-            <view class="post-overlay" />
-            <view class="post-body">
-              <text class="post-title">{{ post.title }}</text>
-              <text class="post-content">{{ post.content }}</text>
-              <view class="tag-row">
-                <text v-for="tag in post.tags" :key="tag" class="tag-item">#{{ tag }}</text>
-              </view>
-              <view class="post-footer">
-                <view class="author">
-                  <image class="author-avatar" :src="post.avatar" mode="aspectFill" />
-                  <text class="author-name">{{ post.author }}</text>
-                </view>
-                <view class="metrics">
-                  <text class="metric-text">♥ {{ post.likes }}</text>
-                </view>
-              </view>
-            </view>
-          </view>
+          />
         </view>
       </view>
 
@@ -393,127 +355,6 @@ function handlePostClick(post) {
   width: calc(50% - 8rpx);
 }
 
-.post-card {
-  position: relative;
-  min-height: 456rpx;
-  margin-bottom: 18rpx;
-  overflow: hidden;
-  border: 1rpx solid rgba(255, 247, 240, 0.08);
-  border-radius: 28rpx;
-  background: #242323;
-  box-shadow: 0 18rpx 36rpx rgba(0, 0, 0, 0.22);
-}
-
-.post-card:nth-child(2n) {
-  min-height: 514rpx;
-}
-
-.post-cover {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.post-overlay {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.02) 22%, rgba(0, 0, 0, 0.78) 100%),
-    linear-gradient(180deg, rgba(217, 122, 63, 0.08) 0%, rgba(217, 122, 63, 0) 34%);
-}
-
-.post-body {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-height: inherit;
-  padding: 156rpx 22rpx 22rpx;
-}
-
-.post-title {
-  color: #fff7f0;
-  font-size: 28rpx;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.post-content {
-  display: block;
-  margin-top: 10rpx;
-  overflow: hidden;
-  color: rgba(255, 247, 240, 0.66);
-  font-size: 23rpx;
-  line-height: 1.45;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin-top: 14rpx;
-}
-
-.tag-item {
-  color: rgba(217, 122, 63, 0.9);
-  font-size: 21rpx;
-  line-height: 1.35;
-}
-
-.post-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
-  margin-top: 18rpx;
-}
-
-.author {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  min-width: 0;
-}
-
-.author-avatar {
-  flex-shrink: 0;
-  width: 34rpx;
-  height: 34rpx;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1rpx rgba(255, 247, 240, 0.18);
-}
-
-.author-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: rgba(255, 247, 240, 0.7);
-  font-size: 22rpx;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.metrics {
-  flex-shrink: 0;
-}
-
-.metric-text {
-  color: rgba(255, 247, 240, 0.68);
-  font-size: 22rpx;
-}
-
 .empty-card {
   display: flex;
   flex-direction: column;
@@ -608,59 +449,6 @@ function handlePostClick(post) {
 
   .waterfall-column {
     width: calc(50% - 8px);
-  }
-
-  .post-card {
-    min-height: 360px;
-    margin-bottom: 16px;
-    border-radius: 24px;
-    border-width: 1px;
-  }
-
-  .post-card:nth-child(2n) {
-    min-height: 420px;
-  }
-
-  .post-body {
-    padding: 120px 18px 18px;
-  }
-
-  .post-title {
-    font-size: 18px;
-  }
-
-  .post-content {
-    margin-top: 8px;
-    font-size: 14px;
-  }
-
-  .tag-row {
-    gap: 6px;
-    margin-top: 10px;
-  }
-
-  .tag-item {
-    font-size: 13px;
-  }
-
-  .post-footer {
-    gap: 10px;
-    margin-top: 14px;
-  }
-
-  .author {
-    gap: 8px;
-  }
-
-  .author-avatar {
-    width: 24px;
-    height: 24px;
-    box-shadow: 0 0 0 1px rgba(255, 247, 240, 0.18);
-  }
-
-  .author-name,
-  .metric-text {
-    font-size: 13px;
   }
 
   .empty-card {

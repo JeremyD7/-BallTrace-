@@ -15,6 +15,7 @@ const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const isSwitching = ref(false)
 const loading = ref(false)
+const isSubmitting = ref(false)
 
 const isRegisterMode = computed(() => mode.value === 'register')
 const cardTitle = computed(() => (isRegisterMode.value ? '创建你的账号' : '账号密码登录'))
@@ -89,6 +90,13 @@ function enterApp() {
 function showError(error) {
   uni.showToast({
     title: error?.message || '操作失败',
+    icon: 'none'
+  })
+}
+
+function showMessage(title) {
+  uni.showToast({
+    title,
     icon: 'none'
   })
 }
