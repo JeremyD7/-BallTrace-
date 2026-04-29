@@ -1,59 +1,57 @@
 <script setup>
-import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { computed, onMounted, ref } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
+import { useAuthStore } from '@/stores/auth'
 
-const AUTH_STORAGE_KEY = 'balltrace_auth'
+const authStore = useAuthStore()
 const activeTab = ref('posts')
-const profileNickname = ref('球友')
+const loading = ref(false)
 
-const stats = [
-  { label: '获赞与收藏', value: '2.3k' },
-  { label: '关注', value: '128' },
-  { label: '粉丝', value: '482' }
+const shortcuts = [
+  { key: 'edit', title: '编辑资料', desc: '完善头像、简介和偏好' },
+  { key: 'likes', title: '我的喜欢', desc: '收藏过的帖子和内容' },
+  { key: 'history', title: '浏览记录', desc: '最近看过的帖子内容' },
+  { key: 'settings', title: '设置', desc: '账号、安全和通知设置' }
 ]
 
-const tags = ['篮球日常', '夜场爱好者', '周末约球', '投篮训练']
+const profile = computed(() => authStore.profile || {})
+const user = computed(() => profile.value.user || authStore.user || {})
+const stats = computed(() => profile.value.stats || [])
+const tags = computed(() => profile.value.tags || [])
+const posts = computed(() => {
+  const kind = activeTab.value === 'posts' ? 'post' : activeTab.value
+  return (profile.value.posts || []).filter((item) => item.kind === kind)
+})
+const displayName = computed(() => user.value.nickname || user.value.account || 'BallTrace')
+const accountText = computed(() => `BALLTRACE 号：${user.value.account || '--'}`)
+const avatarUrl = computed(() => user.value.avatarUrl || '/static/images/jeremy.webp')
+const bio = computed(() => user.value.bio || '生命不息，运动不止。记录每一次约球、训练和球场日常。')
 
-const posts = [
-  {
-    id: 1,
-    cover: '/static/images/art_theman.jpg'
-  },
-  {
-    id: 2,
-    cover: '/static/images/art_thewoman.jpg'
-  },
-  {
-    id: 3,
-    cover: '/static/images/art_frommoon.jpg'
-  },
-  {
-    id: 4,
-    cover: '/static/images/art002e009007~large.jpg'
-  },
-  {
-    id: 5,
-    cover: '/static/images/art_thewoman.jpg'
-  },
-  {
-    id: 6,
-    cover: '/static/images/art_theman.jpg'
+onMounted(loadProfile)
+
+async function loadProfile() {
+  if (!authStore.token) {
+    uni.reLaunch({ url: '/pages/login/index' })
+    return
   }
-]
 
-function loadProfileFromStorage() {
-  const authSession = uni.getStorageSync(AUTH_STORAGE_KEY)
-  const user = authSession?.user || {}
+  loading.value = true
 
-  profileNickname.value = user.nickname || user.account || '球友'
+  try {
+    await authStore.fetchProfile()
+  } catch (error) {
+    authStore.logout()
+    uni.showToast({
+      title: error?.message || '请重新登录',
+      icon: 'none'
+    })
+    setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 300)
+  } finally {
+    loading.value = false
+  }
 }
 
-onShow(() => {
-  loadProfileFromStorage()
-})
-
-function handleEditProfile() {
+function handleShortcut(item) {
   uni.showToast({
     title: '编辑资料功能待接入',
     icon: 'none'
@@ -80,19 +78,18 @@ function handlePostClick() {
       </view>
 
       <view class="profile-header">
-        <image class="profile-avatar" src="/static/images/jeremy.webp" mode="aspectFill" />
+        <image class="profile-avatar" :src="avatarUrl" mode="aspectFill" />
 
         <view class="profile-main">
           <view class="profile-row">
-            <text class="profile-name">{{ profileNickname }}</text>
-            <text class="profile-edit" @click="handleEditProfile">编辑</text>
+            <text class="profile-name">{{ displayName }}</text>
             <view class="profile-badge">
               <text class="profile-badge-text">Lv.2</text>
             </view>
           </view>
 
-          <text class="profile-id">BALLTRACE 号：evan_24</text>
-          <text class="profile-bio">生命不息，运动不止。记录每一次约球、训练和球场日常。</text>
+          <text class="profile-id">{{ accountText }}</text>
+          <text class="profile-bio">{{ bio }}</text>
 
           <view class="profile-tags">
             <text v-for="tag in tags" :key="tag" class="profile-tag">{{ tag }}</text>

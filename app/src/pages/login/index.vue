@@ -3,7 +3,9 @@ import { computed, ref } from 'vue'
 import { login, register } from '@/api/auth'
 
 const AUTH_STORAGE_KEY = 'balltrace_auth'
+import { useAuthStore } from '@/stores/auth'
 
+const authStore = useAuthStore()
 const mode = ref('login')
 const account = ref('')
 const password = ref('')
@@ -12,7 +14,7 @@ const agreed = ref(true)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const isSwitching = ref(false)
-const isSubmitting = ref(false)
+const loading = ref(false)
 
 const isRegisterMode = computed(() => mode.value === 'register')
 const cardTitle = computed(() => (isRegisterMode.value ? '创建你的账号' : '账号密码登录'))
@@ -32,7 +34,7 @@ const switchPrompt = computed(() => (isRegisterMode.value ? '已经有账号了�
 const switchActionText = computed(() => (isRegisterMode.value ? '去登录' : '去注册'))
 
 const canSubmit = computed(() => {
-  const hasBaseFields = account.value.trim().length > 0 && password.value.trim().length > 0 && agreed.value
+  const hasBaseFields = account.value.trim().length > 0 && password.value.trim().length > 0 && agreed.value && !loading.value
 
   if (!isRegisterMode.value) {
     return hasBaseFields && !isSubmitting.value
@@ -84,9 +86,9 @@ function enterApp() {
   })
 }
 
-function showMessage(title) {
+function showError(error) {
   uni.showToast({
-    title,
+    title: error?.message || '操作失败',
     icon: 'none'
   })
 }
@@ -126,16 +128,30 @@ function validateBaseFields() {
 }
 
 async function handleLogin() {
-  const authResult = await login({
-    account: account.value.trim(),
-    password: password.value
-  })
+  if (!validateBaseFields()) {
+    return
+  }
 
-  saveAuthSession(authResult)
-  enterApp()
+  loading.value = true
+
+  try {
+    await authStore.login({
+      account: account.value.trim(),
+      password: password.value
+    })
+    enterApp()
+  } catch (error) {
+    showError(error)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function handleRegister() {
+  if (!validateBaseFields()) {
+    return
+  }
+
   if (!confirmPassword.value.trim()) {
     showMessage('请确认密码')
     return
@@ -146,31 +162,33 @@ async function handleRegister() {
     return
   }
 
-  const normalizedAccount = account.value.trim()
-  const authResult = await register({
-    account: normalizedAccount,
-    password: password.value,
-    nickname: normalizedAccount
-  })
+  loading.value = true
 
-  saveAuthSession(authResult)
-
-  uni.showToast({
-    title: '注册成功',
-    icon: 'success'
-  })
-
-  setTimeout(() => {
+  try {
+    await authStore.register({
+      account: account.value.trim(),
+      password: password.value,
+      nickname: account.value.trim()
+    })
+    uni.showToast({
+      title: '注册成功',
+      icon: 'success'
+    })
     enterApp()
-  }, 300)
+  } catch (error) {
+    showError(error)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function handleSubmit() {
-  if (!canSubmit.value) {
+  if (loading.value) {
     return
   }
 
-  if (!validateBaseFields()) {
+  if (isRegisterMode.value) {
+    handleRegister()
     return
   }
 

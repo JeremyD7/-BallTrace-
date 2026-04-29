@@ -16,5 +16,48 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
+  profileStats ProfileStat[]
+  profileTags  ProfileTag[]
+  profilePosts ProfilePost[]
+
   @@map("users")
+}
+
+model ProfileStat {
+  id     Int    @id @default(autoincrement())
+  userId Int    @map("user_id")
+  label  String @db.VarChar(32)
+  value  String @db.VarChar(16)
+  sort   Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("profile_stats")
+}
+
+model ProfileTag {
+  id     Int    @id @default(autoincrement())
+  userId Int    @map("user_id")
+  name   String @db.VarChar(32)
+  sort   Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("profile_tags")
+}
+
+model ProfilePost {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  cover     String   @db.VarChar(255)
+  kind      String   @default("post") @db.VarChar(16)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+  @@map("profile_posts")
 }
