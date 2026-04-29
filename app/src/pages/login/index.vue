@@ -1,6 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
+const authStore = useAuthStore()
 const mode = ref('login')
 const account = ref('')
 const password = ref('')
@@ -9,6 +11,7 @@ const agreed = ref(true)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const isSwitching = ref(false)
+const loading = ref(false)
 
 const isRegisterMode = computed(() => mode.value === 'register')
 const cardTitle = computed(() => (isRegisterMode.value ? '创建你的账号' : '账号密码登录'))
@@ -22,7 +25,7 @@ const switchPrompt = computed(() => (isRegisterMode.value ? '已经有账号了�
 const switchActionText = computed(() => (isRegisterMode.value ? '去登录' : '去注册'))
 
 const canSubmit = computed(() => {
-  const hasBaseFields = account.value.trim().length > 0 && password.value.trim().length > 0 && agreed.value
+  const hasBaseFields = account.value.trim().length > 0 && password.value.trim().length > 0 && agreed.value && !loading.value
 
   if (!isRegisterMode.value) {
     return hasBaseFields
@@ -70,6 +73,13 @@ function enterApp() {
   })
 }
 
+function showError(error) {
+  uni.showToast({
+    title: error?.message || '操作失败',
+    icon: 'none'
+  })
+}
+
 function validateBaseFields() {
   if (!account.value.trim()) {
     uni.showToast({
@@ -98,15 +108,27 @@ function validateBaseFields() {
   return true
 }
 
-function handleLogin() {
+async function handleLogin() {
   if (!validateBaseFields()) {
     return
   }
 
-  enterApp()
+  loading.value = true
+
+  try {
+    await authStore.login({
+      account: account.value.trim(),
+      password: password.value
+    })
+    enterApp()
+  } catch (error) {
+    showError(error)
+  } finally {
+    loading.value = false
+  }
 }
 
-function handleRegister() {
+async function handleRegister() {
   if (!validateBaseFields()) {
     return
   }
@@ -127,17 +149,31 @@ function handleRegister() {
     return
   }
 
-  uni.showToast({
-    title: '注册成功',
-    icon: 'success'
-  })
+  loading.value = true
 
-  setTimeout(() => {
+  try {
+    await authStore.register({
+      account: account.value.trim(),
+      password: password.value,
+      nickname: account.value.trim()
+    })
+    uni.showToast({
+      title: '注册成功',
+      icon: 'success'
+    })
     enterApp()
-  }, 300)
+  } catch (error) {
+    showError(error)
+  } finally {
+    loading.value = false
+  }
 }
 
 function handleSubmit() {
+  if (loading.value) {
+    return
+  }
+
   if (isRegisterMode.value) {
     handleRegister()
     return
