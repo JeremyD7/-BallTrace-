@@ -87,9 +87,8 @@ function handleActionClick(action) {
 }
 
 function handlePostClick(post) {
-  uni.showToast({
-    title: `打开帖子：${post.author}`,
-    icon: 'none'
+  uni.navigateTo({
+    url: `/pages/community/detail?id=${post.id}`
   })
 }
 </script>
