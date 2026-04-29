@@ -108,11 +108,11 @@ function handleClick() {
 .match-status {
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: rgba(198, 220, 85, 0.18);
+  background: rgba(217, 122, 63, 0.18);
 }
 
 .match-status-text {
-  color: #c6dc55;
+  color: $brand-color;
   font-size: 22rpx;
   font-weight: 700;
 }

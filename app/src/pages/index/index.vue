@@ -45,8 +45,8 @@ const posts = [
   },
   {
     id: 4,
-    title: '发球训练后的恢复安排',
-    content: '练完发球后做了一组力量恢复，把我最近在用的训练和放松节奏整理出来，给大家参考。',
+    title: '训练后的恢复安排',
+    content: '练完后做了一组力量恢复，把我最近在用的训练和放松节奏整理出来，给大家参考。',
     author: '后场观察员',
     likes: 145,
     cover: '/static/images/theman02.jpg'
@@ -87,9 +87,8 @@ function handleActionClick(action) {
 }
 
 function handlePostClick(post) {
-  uni.showToast({
-    title: `打开帖子：${post.author}`,
-    icon: 'none'
+  uni.navigateTo({
+    url: `/pages/community/detail?id=${post.id}`
   })
 }
 </script>
@@ -133,7 +132,6 @@ function handlePostClick(post) {
 </template>
 
 <style lang="scss" scoped>
-
 .page {
   min-height: 100vh;
   background:

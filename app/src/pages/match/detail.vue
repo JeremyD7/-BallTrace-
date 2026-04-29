@@ -141,7 +141,7 @@ function handleApply() {
 .detail-back,
 .detail-share {
   color: #f4f4f4;
-  font-size: 42rpx;
+  font-size: 56rpx;
   line-height: 1;
 }
 
@@ -182,7 +182,7 @@ function handleApply() {
 }
 
 .detail-missing {
-  color: #c6dc55;
+  color: $brand-color;
   font-size: 26rpx;
   flex-shrink: 0;
 }
@@ -290,8 +290,8 @@ function handleApply() {
   margin-top: 8rpx;
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
-  background: rgba(198, 220, 85, 0.18);
-  color: #c6dc55;
+  background: rgba(217, 122, 63, 0.18);
+  color: $brand-color;
   font-size: 18rpx;
 }
 
@@ -335,7 +335,7 @@ function handleApply() {
   margin-top: 28rpx;
   border: 0;
   border-radius: 24rpx;
-  background: #c6dc55;
+  background: $brand-color;
   color: #111111;
   font-size: 32rpx;
   font-weight: 700;
@@ -361,7 +361,7 @@ function handleApply() {
   }
 
   .detail-back {
-    font-size: 30px;
+    font-size: 38px;
   }
 
   .detail-share {
