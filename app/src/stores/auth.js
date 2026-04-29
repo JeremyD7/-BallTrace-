@@ -3,11 +3,46 @@ import { request } from '@/api/request'
 
 const TOKEN_KEY = 'balltrace_token'
 const USER_KEY = 'balltrace_user'
+const LEGACY_AUTH_KEY = 'balltrace_auth'
+
+function getStoredAuth() {
+  const token = uni.getStorageSync(TOKEN_KEY)
+  const user = uni.getStorageSync(USER_KEY)
+
+  if (token) {
+    return {
+      token,
+      user: user || null
+    }
+  }
+
+  const legacyAuth = uni.getStorageSync(LEGACY_AUTH_KEY)
+
+  if (!legacyAuth?.accessToken) {
+    return {
+      token: '',
+      user: user || null
+    }
+  }
+
+  uni.setStorageSync(TOKEN_KEY, legacyAuth.accessToken)
+
+  if (legacyAuth.user) {
+    uni.setStorageSync(USER_KEY, legacyAuth.user)
+  }
+
+  return {
+    token: legacyAuth.accessToken,
+    user: legacyAuth.user || user || null
+  }
+}
+
+const storedAuth = getStoredAuth()
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: uni.getStorageSync(TOKEN_KEY) || '',
-    user: uni.getStorageSync(USER_KEY) || null,
+    token: storedAuth.token,
+    user: storedAuth.user,
     profile: null
   }),
   actions: {
@@ -51,6 +86,7 @@ export const useAuthStore = defineStore('auth', {
       this.profile = null
       uni.removeStorageSync(TOKEN_KEY)
       uni.removeStorageSync(USER_KEY)
+      uni.removeStorageSync(LEGACY_AUTH_KEY)
     }
   }
 })

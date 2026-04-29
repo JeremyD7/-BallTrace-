@@ -75,7 +75,14 @@ const rightPosts = computed(() => posts.filter((_, index) => index % 2 === 1))
 function handleActionClick(action) {
   if (action.key === 'match') {
     uni.navigateTo({
-      url: '/pages/match/index'
+      url: '/pages/match/create'
+    })
+    return
+  }
+
+  if (action.key === 'post') {
+    uni.navigateTo({
+      url: '/pages/community/create'
     })
     return
   }

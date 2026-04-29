@@ -32,6 +32,12 @@
       }
     },
     {
+      "path": "pages/community/create",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/message/index",
       "style": {
         "navigationStyle": "custom"
@@ -45,6 +51,12 @@
     },
     {
       "path": "pages/match/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/match/create",
       "style": {
         "navigationStyle": "custom"
       }

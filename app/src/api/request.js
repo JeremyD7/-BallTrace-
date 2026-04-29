@@ -16,7 +16,9 @@ export function request(path, options = {}) {
           return
         }
 
-        reject(new Error(data?.message || 'Request failed'))
+        const error = new Error(data?.message || 'Request failed')
+        error.statusCode = statusCode
+        reject(error)
       },
       fail: () => reject(new Error('Network error'))
     })

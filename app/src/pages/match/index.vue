@@ -3,9 +3,8 @@ import MatchCard from '@/components/MatchCard.vue'
 import { matchPosts } from '@/pages/data/matches'
 
 function handleCreate() {
-  uni.showToast({
-    title: '发布约球待接入',
-    icon: 'none'
+  uni.navigateTo({
+    url: '/pages/match/create'
   })
 }
 
