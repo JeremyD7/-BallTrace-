@@ -4,6 +4,7 @@ import { onLoad } from '@dcloudio/uni-app'
 
 const postId = ref('1')
 const commentText = ref('')
+const currentImageIndex = ref(0)
 
 const defaultPost = {
   id: 2,
@@ -75,7 +76,13 @@ const defaultComments = [
   }
 ]
 
-const activeCover = computed(() => defaultPost.coverImages[defaultPost.currentImageIndex])
+const coverImages = computed(() => {
+  if (Array.isArray(defaultPost.coverImages) && defaultPost.coverImages.length > 0) {
+    return defaultPost.coverImages
+  }
+
+  return ['/static/images/art_theman.jpg']
+})
 
 onLoad((query) => {
   if (query?.id) {
@@ -114,6 +121,10 @@ function handleCollect() {
   })
 }
 
+function handleCoverChange(event) {
+  currentImageIndex.value = event?.detail?.current || 0
+}
+
 function handleSubmitComment() {
   if (!commentText.value.trim()) {
     uni.showToast({
@@ -150,13 +161,23 @@ function handleSubmitComment() {
         </view>
 
         <view class="cover-card">
-          <image class="cover-image" :src="activeCover" mode="aspectFill" />
+          <swiper
+            class="cover-swiper"
+            :current="currentImageIndex"
+            circular
+            :indicator-dots="false"
+            @change="handleCoverChange"
+          >
+            <swiper-item v-for="(image, index) in coverImages" :key="`${image}-${index}`">
+              <image class="cover-image" :src="image" mode="aspectFill" />
+            </swiper-item>
+          </swiper>
           <view class="cover-dots">
             <view
-              v-for="(_, index) in defaultPost.coverImages"
+              v-for="(_, index) in coverImages"
               :key="index"
               class="cover-dot"
-              :class="{ 'cover-dot-active': index === defaultPost.currentImageIndex }"
+              :class="{ 'cover-dot-active': index === currentImageIndex }"
             />
           </view>
         </view>
@@ -330,6 +351,7 @@ function handleSubmitComment() {
   box-shadow: 0 20rpx 44rpx rgba(0, 0, 0, 0.24);
 }
 
+.cover-swiper,
 .cover-image {
   width: 100%;
   height: 100%;
