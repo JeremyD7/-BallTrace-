@@ -87,6 +87,13 @@ function handleActionClick(action) {
     return
   }
 
+  if (action.key === 'post') {
+    uni.navigateTo({
+      url: '/pages/community/create'
+    })
+    return
+  }
+
   uni.showToast({
     title: `${action.title}功能待接入`,
     icon: 'none'
