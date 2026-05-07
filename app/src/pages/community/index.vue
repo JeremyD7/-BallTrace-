@@ -26,119 +26,8 @@ const tabs = [
   }
 ]
 
-const defaultPosts = [
-  {
-    id: 1,
-    title: '成都最美球场推荐',
-    content: '傍晚的灯光和场地线条很适合拍照，硬地回弹也稳，适合约一场轻松双打。',
-    author: '网球爱好者',
-    avatar: '/static/images/jeremy.webp',
-    cover: '/static/images/art_frommoon.jpg',
-    likes: 326,
-    comments: 42,
-    tags: ['球场', '成都'],
-    category: 'recommend',
-    publishedAt: '10分钟前'
-  },
-  {
-    id: 2,
-    title: '今天打球心得分享',
-    content: '正手发力终于找到一点感觉，重点是提前转肩和击球后完整随挥。',
-    author: '张三',
-    avatar: '/static/images/theman02.jpg',
-    cover: '/static/images/art_theman.jpg',
-    likes: 218,
-    comments: 31,
-    tags: ['训练', '心得'],
-    category: 'latest',
-    publishedAt: '32分钟前'
-  },
-  {
-    id: 3,
-    title: '新手第一次双打要注意什么',
-    content: '少抢球、多沟通、站位别太靠后，先把回合打起来比追求制胜分更重要。',
-    author: 'Ace慢热',
-    avatar: '/static/images/art_thewoman.jpg',
-    cover: '/static/images/earth.jpg',
-    likes: 451,
-    comments: 68,
-    tags: ['双打', '新手'],
-    category: 'hot',
-    publishedAt: '1小时前'
-  },
-  {
-    id: 4,
-    title: '下班后约球路线',
-    content: '从地铁口步行八分钟到场，附近有便利店和停车位，适合工作日晚上拼场。',
-    author: '球场拾光',
-    avatar: '/static/images/art_frommoon.jpg',
-    cover: '/static/images/art_thewoman.jpg',
-    likes: 188,
-    comments: 24,
-    tags: ['约球', '路线'],
-    category: 'recommend',
-    publishedAt: '2小时前'
-  },
-  {
-    id: 5,
-    title: '一组实用热身动作',
-    content: '开打前先做肩部环绕、髋部激活和小碎步，身体打开后失误率会低很多。',
-    author: '后场观察员',
-    avatar: '/static/images/jeremy.webp',
-    cover: '/static/images/theman02.jpg',
-    likes: 274,
-    comments: 36,
-    tags: ['热身', '训练'],
-    category: 'latest',
-    publishedAt: '今天'
-  },
-  {
-    id: 6,
-    title: '球鞋抓地力实测',
-    content: '同一双鞋在潮湿硬地和干燥硬地上差别明显，起停动作一定要留安全余量。',
-    author: '落点实验室',
-    avatar: '/static/images/art_theman.jpg',
-    cover: '/static/images/art_frommoon.jpg',
-    likes: 389,
-    comments: 57,
-    tags: ['装备', '测评'],
-    category: 'hot',
-    publishedAt: '昨天'
-  }
-]
-
 const visiblePosts = computed(() => {
-  if (hasLoaded.value) {
-    return posts.value
-  }
-
-  const keyword = searchKeyword.value.trim().toLowerCase()
-
-  return defaultPosts
-    .filter((post) => {
-      if (activeTab.value === 'recommend') {
-        return true
-      }
-
-      return post.category === activeTab.value
-    })
-    .filter((post) => {
-      if (!keyword) {
-        return true
-      }
-
-      return [post.title, post.content, post.author, ...post.tags]
-        .join(' ')
-        .toLowerCase()
-        .includes(keyword)
-    })
-    .sort((a, b) => {
-      if (activeTab.value === 'hot') {
-        return b.likes - a.likes
-      }
-
-      return a.id - b.id
-    })
+  return posts.value
 })
 
 const leftPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 0))
@@ -161,7 +50,6 @@ async function loadPosts() {
       pageSize: 20
     })
     posts.value = data?.items || []
-    hasLoaded.value = true
   } catch (error) {
     uni.showToast({
       title: error?.message || '帖子流加载失败',
@@ -169,6 +57,7 @@ async function loadPosts() {
     })
   } finally {
     loading.value = false
+    hasLoaded.value = true
   }
 }
 
@@ -247,8 +136,8 @@ function handlePostClick(post) {
       </view>
 
       <view v-else class="empty-card">
-        <text class="empty-title">没有找到相关帖子</text>
-        <text class="empty-copy">换个关键词试试看</text>
+        <text class="empty-title">{{ loading && !hasLoaded ? '帖子加载中' : '没有找到相关帖子' }}</text>
+        <text class="empty-copy">{{ loading && !hasLoaded ? '正在获取最新内容...' : '换个关键词试试看' }}</text>
       </view>
     </view>
 

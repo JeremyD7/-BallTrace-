@@ -29,6 +29,12 @@ export class CommunityController {
     return this.communityService.searchPosts(keyword);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('posts/my')
+  getMyPosts(@Req() request: AuthRequest) {
+    return this.communityService.getPostsByUserId(request.user!.id);
+  }
+
   @Get('posts/:id')
   getPostDetail(@Param('id', ParseIntPipe) id: number) {
     return this.communityService.getPostDetail(id);

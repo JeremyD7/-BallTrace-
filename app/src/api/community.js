@@ -16,6 +16,12 @@ export function searchCommunityPosts(keyword) {
   })
 }
 
+export function getMyCommunityPosts() {
+  return request({
+    url: '/community/posts/my'
+  })
+}
+
 export function createCommunityPost(data) {
   return request({
     url: '/community/posts',

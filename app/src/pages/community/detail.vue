@@ -16,81 +16,11 @@ const commentsLoaded = ref(false)
 const currentImageIndex = ref(0)
 const loading = ref(false)
 
-const defaultPost = {
-  id: 2,
-  title: '今天打球心得分享',
-  content:
-    '今天在锦江网球场打了两个小时，感觉状态特别好！正手击球的旋转控制有了很大进步。\n\n分享几个心得：\n1. 击球时要保持放松，不要过分用力。\n2. 注意脚步移动，提前到位。\n3. 击球点要在身体前方。\n\n希望对大家有帮助！',
-  author: {
-    id: 101,
-    name: '张三',
-    avatar: '/static/images/theman02.jpg'
-  },
-  coverImages: [
-    '/static/images/art_theman.jpg',
-    '/static/images/art_frommoon.jpg',
-    '/static/images/earth.jpg'
-  ],
-  currentImageIndex: 0,
-  likes: 218,
-  comments: 8,
-  shares: 12,
-  isLiked: false,
-  tags: ['训练', '心得', '正手'],
-  publishedAt: '2024-01-15 10:30',
-  location: '锦江网球场'
-}
-
-const defaultComments = [
-  {
-    id: 1,
-    author: {
-      id: 201,
-      name: '李娜',
-      avatar: '/static/images/art_thewoman.jpg'
-    },
-    content: '脚步提前到位真的很关键，我最近也在练这个。',
-    likes: 16,
-    publishedAt: '12分钟前',
-    replies: [
-      {
-        id: 11,
-        authorName: '张三',
-        content: '是的，提前半拍会轻松很多。'
-      }
-    ]
-  },
-  {
-    id: 2,
-    author: {
-      id: 202,
-      name: 'Ace慢热',
-      avatar: '/static/images/jeremy.webp'
-    },
-    content: '正手放松这一点太真实了，越想发力越容易打飞。',
-    likes: 9,
-    publishedAt: '35分钟前',
-    replies: []
-  },
-  {
-    id: 3,
-    author: {
-      id: 203,
-      name: '落点实验室',
-      avatar: '/static/images/art_frommoon.jpg'
-    },
-    content: '下次可以试试用小目标练落点，效果很明显。',
-    likes: 7,
-    publishedAt: '1小时前',
-    replies: []
-  }
-]
-
-const currentPost = computed(() => post.value || defaultPost)
-const commentList = computed(() => (commentsLoaded.value ? comments.value : defaultComments))
+const currentPost = computed(() => post.value)
+const commentList = computed(() => (commentsLoaded.value ? comments.value : []))
+const coverImages = computed(() => currentPost.value?.coverImages || [])
 const activeCover = computed(() => {
-  const images = currentPost.value.coverImages || []
-  return images[currentImageIndex.value] || images[0]
+  return coverImages.value[currentImageIndex.value] || coverImages.value[0]
 })
 
 onLoad((query) => {
@@ -137,6 +67,10 @@ function handleShare() {
     title: '分享功能待接入',
     icon: 'none'
   })
+}
+
+function handleCoverChange(event) {
+  currentImageIndex.value = event?.detail?.current || 0
 }
 
 async function handleLike() {
@@ -206,86 +140,98 @@ async function handleSubmitComment() {
           <text class="topbar-share" @click="handleShare">↗</text>
         </view>
 
-        <view class="author-row">
-          <image class="author-avatar" :src="currentPost.author.avatar" mode="aspectFill" />
-          <view class="author-copy">
-            <text class="author-name">{{ currentPost.author.name }}</text>
-            <text class="post-time">{{ currentPost.publishedAt }}</text>
-          </view>
+        <view v-if="loading && !currentPost" class="empty-card">
+          <text class="empty-title">帖子加载中</text>
+          <text class="empty-copy">正在获取最新内容...</text>
         </view>
 
-        <view class="cover-card">
-          <swiper
-            class="cover-swiper"
-            :current="currentImageIndex"
-            circular
-            :indicator-dots="false"
-            @change="handleCoverChange"
-          >
-            <swiper-item v-for="(image, index) in coverImages" :key="`${image}-${index}`">
-              <image class="cover-image" :src="image" mode="aspectFill" />
-            </swiper-item>
-          </swiper>
-          <view class="cover-dots">
-            <view
-              v-for="(_, index) in currentPost.coverImages"
-              :key="index"
-              class="cover-dot"
-              :class="{ 'cover-dot-active': index === currentImageIndex }"
-            />
-          </view>
+        <view v-else-if="!currentPost" class="empty-card">
+          <text class="empty-title">帖子不存在</text>
+          <text class="empty-copy">请返回列表重新选择</text>
         </view>
 
-        <view class="content-section">
-          <text class="post-title">{{ currentPost.title }}</text>
-          <text class="post-content">{{ currentPost.content }}</text>
-          <view class="tag-row">
-            <text v-for="tag in currentPost.tags" :key="tag" class="tag-item">#{{ tag }}</text>
+        <template v-else>
+          <view class="author-row">
+            <image class="author-avatar" :src="currentPost.author?.avatar" mode="aspectFill" />
+            <view class="author-copy">
+              <text class="author-name">{{ currentPost.author?.name }}</text>
+              <text class="post-time">{{ currentPost.publishedAt }}</text>
+            </view>
           </view>
-          <view class="meta-row">
-            <text class="meta-text">{{ currentPost.location }}</text>
-            <text class="meta-dot">·</text>
-            <text class="meta-text">帖子 ID {{ postId }}</text>
+
+          <view v-if="coverImages.length" class="cover-card">
+            <swiper
+              class="cover-swiper"
+              :current="currentImageIndex"
+              circular
+              :indicator-dots="false"
+              @change="handleCoverChange"
+            >
+              <swiper-item v-for="(image, index) in coverImages" :key="`${image}-${index}`">
+                <image class="cover-image" :src="image" mode="aspectFill" />
+              </swiper-item>
+            </swiper>
+            <view class="cover-dots">
+              <view
+                v-for="(_, index) in coverImages"
+                :key="index"
+                class="cover-dot"
+                :class="{ 'cover-dot-active': index === currentImageIndex }"
+              />
+            </view>
           </view>
-        </view>
 
-        <view class="divider" />
+          <view class="content-section">
+            <text class="post-title">{{ currentPost.title }}</text>
+            <text class="post-content">{{ currentPost.content }}</text>
+            <view v-if="Array.isArray(currentPost.tags) && currentPost.tags.length" class="tag-row">
+              <text v-for="tag in currentPost.tags" :key="tag" class="tag-item">#{{ tag }}</text>
+            </view>
+            <view class="meta-row">
+              <text class="meta-text">{{ currentPost.location }}</text>
+              <text class="meta-dot">·</text>
+              <text class="meta-text">帖子 ID {{ postId }}</text>
+            </view>
+          </view>
 
-        <view class="comment-header">
-          <text class="comment-title">共{{ currentPost.comments }}条评论</text>
-        </view>
+          <view class="divider" />
 
-        <view class="comment-list">
-          <view v-for="comment in commentList" :key="comment.id" class="comment-card">
-            <view class="comment-main">
-              <image class="comment-avatar" :src="comment.author.avatar" mode="aspectFill" />
-              <view class="comment-copy">
-                <view class="comment-top">
-                  <text class="comment-name">{{ comment.author.name }}</text>
-                  <text class="comment-time">{{ comment.publishedAt }}</text>
-                </view>
-                <text class="comment-content">{{ comment.content }}</text>
-                <view v-if="comment.replies.length" class="reply-box">
-                  <text
-                    v-for="reply in comment.replies"
-                    :key="reply.id"
-                    class="reply-text"
-                  >
-                    {{ reply.authorName }}：{{ reply.content }}
-                  </text>
+          <view class="comment-header">
+            <text class="comment-title">共{{ currentPost.comments || 0 }}条评论</text>
+          </view>
+
+          <view v-if="commentList.length" class="comment-list">
+            <view v-for="comment in commentList" :key="comment.id" class="comment-card">
+              <view class="comment-main">
+                <image class="comment-avatar" :src="comment.author?.avatar" mode="aspectFill" />
+                <view class="comment-copy">
+                  <view class="comment-top">
+                    <text class="comment-name">{{ comment.author?.name }}</text>
+                    <text class="comment-time">{{ comment.publishedAt }}</text>
+                  </view>
+                  <text class="comment-content">{{ comment.content }}</text>
+                  <view v-if="comment.replies?.length" class="reply-box">
+                    <text
+                      v-for="reply in comment.replies"
+                      :key="reply.id"
+                      class="reply-text"
+                    >
+                      {{ reply.authorName }}：{{ reply.content }}
+                    </text>
+                  </view>
                 </view>
               </view>
-            </view>
-            <view class="comment-actions">
-              <text class="comment-like">♥ {{ comment.likes }}</text>
-              <text class="comment-reply">回复</text>
+              <view class="comment-actions">
+                <text class="comment-like">♥ {{ comment.likes }}</text>
+                <text class="comment-reply">回复</text>
+              </view>
             </view>
           </view>
-        </view>
+        </template>
       </view>
     </scroll-view>
 
-    <view class="bottom-bar">
+    <view v-if="currentPost" class="bottom-bar">
       <view class="comment-input-wrap">
         <input
           v-model="commentText"
@@ -299,7 +245,7 @@ async function handleSubmitComment() {
       <view class="bottom-actions">
         <view class="bottom-action" @click="handleLike">
           <text class="bottom-icon">♥</text>
-          <text class="bottom-count">{{ currentPost.likes }}</text>
+          <text class="bottom-count">{{ currentPost.likes || 0 }}</text>
         </view>
         <view class="bottom-action" @click="handleCollect">
           <text class="bottom-icon">★</text>
@@ -326,6 +272,29 @@ async function handleSubmitComment() {
 
 .detail-shell {
   padding: 96rpx 28rpx 190rpx;
+}
+
+.empty-card {
+  margin-top: 54rpx;
+  padding: 36rpx 28rpx;
+  border-radius: 32rpx;
+  border: 1rpx solid rgba(255, 247, 240, 0.08);
+  background: rgba(36, 35, 35, 0.92);
+}
+
+.empty-title {
+  display: block;
+  color: #f4f4f4;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.empty-copy {
+  display: block;
+  margin-top: 12rpx;
+  color: rgba(244, 244, 244, 0.5);
+  font-size: 24rpx;
+  line-height: 1.6;
 }
 
 .topbar {

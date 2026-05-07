@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { mapPostListItem } from '../community/community.mapper';
 
 const DEFAULT_STATS = [
   { label: 'Likes', value: '2.3k' },
@@ -12,15 +13,6 @@ const DEFAULT_TAGS = [
   'Night court',
   'Weekend games',
   'Shooting practice',
-];
-
-const DEFAULT_POSTS = [
-  { cover: '/static/images/art_theman.jpg', kind: 'post' },
-  { cover: '/static/images/art_thewoman.jpg', kind: 'post' },
-  { cover: '/static/images/art_frommoon.jpg', kind: 'post' },
-  { cover: '/static/images/theman02.jpg', kind: 'saved' },
-  { cover: '/static/images/earth.jpg', kind: 'saved' },
-  { cover: '/static/images/art_theman.jpg', kind: 'saved' },
 ];
 
 @Injectable()
@@ -38,7 +30,7 @@ export class ProfileService {
 
     await this.seedProfile(userId);
 
-    const [stats, tags, posts] = await Promise.all([
+    const [stats, tags, communityPosts, savedPosts] = await Promise.all([
       this.prisma.profileStat.findMany({
         where: { userId },
         orderBy: { sort: 'asc' },
@@ -47,11 +39,36 @@ export class ProfileService {
         where: { userId },
         orderBy: { sort: 'asc' },
       }),
+      this.prisma.communityPost.findMany({
+        where: { userId, status: 'published' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          author: true,
+          media: {
+            orderBy: { sort: 'asc' },
+          },
+          tags: {
+            orderBy: { sort: 'asc' },
+          },
+        },
+      }),
       this.prisma.profilePost.findMany({
-        where: { userId },
+        where: { userId, kind: 'saved' },
         orderBy: { sort: 'asc' },
       }),
     ]);
+
+    const posts = [
+      ...communityPosts.map((post) => ({
+        ...mapPostListItem(post),
+        kind: 'post' as const,
+      })),
+      ...savedPosts.map(({ id, cover }) => ({
+        id,
+        cover,
+        kind: 'saved' as const,
+      })),
+    ];
 
     return {
       user: {
@@ -63,7 +80,7 @@ export class ProfileService {
       },
       stats: stats.map(({ label, value }) => ({ label, value })),
       tags: tags.map((tag) => tag.name),
-      posts: posts.map(({ id, cover, kind }) => ({ id, cover, kind })),
+      posts,
     };
   }
 
@@ -80,9 +97,6 @@ export class ProfileService {
       }),
       this.prisma.profileTag.createMany({
         data: DEFAULT_TAGS.map((name, sort) => ({ name, sort, userId })),
-      }),
-      this.prisma.profilePost.createMany({
-        data: DEFAULT_POSTS.map((item, sort) => ({ ...item, sort, userId })),
       }),
     ]);
   }

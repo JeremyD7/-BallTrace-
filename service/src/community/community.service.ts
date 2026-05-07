@@ -403,4 +403,19 @@ export class CommunityService {
       throw new BadRequestException('Invalid parent comment');
     }
   }
+
+  async getPostsByUserId(userId: number) {
+    const posts = await this.prisma.communityPost.findMany({
+      where: {
+        userId,
+        status: POST_STATUS_PUBLISHED,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: POST_INCLUDE,
+    });
+
+    return posts.map(mapPostListItem);
+  }
 }
