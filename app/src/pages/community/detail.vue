@@ -1,9 +1,20 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import {
+  createCommunityComment,
+  getCommunityPostComments,
+  getCommunityPostDetail,
+  likeCommunityPost
+} from '@/api/community'
 
 const postId = ref('1')
 const commentText = ref('')
+const post = ref(null)
+const comments = ref([])
+const commentsLoaded = ref(false)
+const currentImageIndex = ref(0)
+const loading = ref(false)
 
 const defaultPost = {
   id: 2,
@@ -75,13 +86,41 @@ const defaultComments = [
   }
 ]
 
-const activeCover = computed(() => defaultPost.coverImages[defaultPost.currentImageIndex])
+const currentPost = computed(() => post.value || defaultPost)
+const commentList = computed(() => (commentsLoaded.value ? comments.value : defaultComments))
+const activeCover = computed(() => {
+  const images = currentPost.value.coverImages || []
+  return images[currentImageIndex.value] || images[0]
+})
 
 onLoad((query) => {
   if (query?.id) {
     postId.value = String(query.id)
   }
+  loadDetail()
 })
+
+async function loadDetail() {
+  loading.value = true
+
+  try {
+    const [postData, commentData] = await Promise.all([
+      getCommunityPostDetail(postId.value),
+      getCommunityPostComments(postId.value)
+    ])
+    post.value = postData
+    comments.value = commentData || []
+    commentsLoaded.value = true
+    currentImageIndex.value = 0
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '帖子详情加载失败',
+      icon: 'none'
+    })
+  } finally {
+    loading.value = false
+  }
+}
 
 function handleBack() {
   uni.navigateBack({
@@ -100,11 +139,22 @@ function handleShare() {
   })
 }
 
-function handleLike() {
-  uni.showToast({
-    title: '点赞接口待接入',
-    icon: 'none'
-  })
+async function handleLike() {
+  try {
+    const result = await likeCommunityPost(postId.value)
+    if (post.value) {
+      post.value = {
+        ...post.value,
+        likes: result.likes,
+        isLiked: result.isLiked
+      }
+    }
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '点赞失败',
+      icon: 'none'
+    })
+  }
 }
 
 function handleCollect() {
@@ -114,7 +164,7 @@ function handleCollect() {
   })
 }
 
-function handleSubmitComment() {
+async function handleSubmitComment() {
   if (!commentText.value.trim()) {
     uni.showToast({
       title: '请输入评论内容',
@@ -123,11 +173,26 @@ function handleSubmitComment() {
     return
   }
 
-  uni.showToast({
-    title: '评论发布待接入',
-    icon: 'none'
-  })
-  commentText.value = ''
+  try {
+    await createCommunityComment(postId.value, {
+      content: commentText.value.trim()
+    })
+    commentText.value = ''
+    const nextComments = await getCommunityPostComments(postId.value)
+    comments.value = nextComments || []
+    commentsLoaded.value = true
+    if (post.value) {
+      post.value = {
+        ...post.value,
+        comments: post.value.comments + 1
+      }
+    }
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '评论发布失败',
+      icon: 'none'
+    })
+  }
 }
 </script>
 
@@ -142,10 +207,10 @@ function handleSubmitComment() {
         </view>
 
         <view class="author-row">
-          <image class="author-avatar" :src="defaultPost.author.avatar" mode="aspectFill" />
+          <image class="author-avatar" :src="currentPost.author.avatar" mode="aspectFill" />
           <view class="author-copy">
-            <text class="author-name">{{ defaultPost.author.name }}</text>
-            <text class="post-time">{{ defaultPost.publishedAt }}</text>
+            <text class="author-name">{{ currentPost.author.name }}</text>
+            <text class="post-time">{{ currentPost.publishedAt }}</text>
           </view>
         </view>
 
@@ -153,22 +218,22 @@ function handleSubmitComment() {
           <image class="cover-image" :src="activeCover" mode="aspectFill" />
           <view class="cover-dots">
             <view
-              v-for="(_, index) in defaultPost.coverImages"
+              v-for="(_, index) in currentPost.coverImages"
               :key="index"
               class="cover-dot"
-              :class="{ 'cover-dot-active': index === defaultPost.currentImageIndex }"
+              :class="{ 'cover-dot-active': index === currentImageIndex }"
             />
           </view>
         </view>
 
         <view class="content-section">
-          <text class="post-title">{{ defaultPost.title }}</text>
-          <text class="post-content">{{ defaultPost.content }}</text>
+          <text class="post-title">{{ currentPost.title }}</text>
+          <text class="post-content">{{ currentPost.content }}</text>
           <view class="tag-row">
-            <text v-for="tag in defaultPost.tags" :key="tag" class="tag-item">#{{ tag }}</text>
+            <text v-for="tag in currentPost.tags" :key="tag" class="tag-item">#{{ tag }}</text>
           </view>
           <view class="meta-row">
-            <text class="meta-text">{{ defaultPost.location }}</text>
+            <text class="meta-text">{{ currentPost.location }}</text>
             <text class="meta-dot">·</text>
             <text class="meta-text">帖子 ID {{ postId }}</text>
           </view>
@@ -177,11 +242,11 @@ function handleSubmitComment() {
         <view class="divider" />
 
         <view class="comment-header">
-          <text class="comment-title">共{{ defaultPost.comments }}条评论</text>
+          <text class="comment-title">共{{ currentPost.comments }}条评论</text>
         </view>
 
         <view class="comment-list">
-          <view v-for="comment in defaultComments" :key="comment.id" class="comment-card">
+          <view v-for="comment in commentList" :key="comment.id" class="comment-card">
             <view class="comment-main">
               <image class="comment-avatar" :src="comment.author.avatar" mode="aspectFill" />
               <view class="comment-copy">
@@ -224,7 +289,7 @@ function handleSubmitComment() {
       <view class="bottom-actions">
         <view class="bottom-action" @click="handleLike">
           <text class="bottom-icon">♥</text>
-          <text class="bottom-count">{{ defaultPost.likes }}</text>
+          <text class="bottom-count">{{ currentPost.likes }}</text>
         </view>
         <view class="bottom-action" @click="handleCollect">
           <text class="bottom-icon">★</text>

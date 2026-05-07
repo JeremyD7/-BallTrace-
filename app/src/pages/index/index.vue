@@ -1,7 +1,8 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
 import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
+import { getCommunityFeed } from '@/api/community'
 
 const quickActions = [
   {
@@ -18,7 +19,7 @@ const quickActions = [
   }
 ]
 
-const posts = [
+const defaultPosts = [
   {
     id: 1,
     title: '今晚天府体院馆约球',
@@ -69,8 +70,27 @@ const posts = [
   }
 ]
 
-const leftPosts = computed(() => posts.filter((_, index) => index % 2 === 0))
-const rightPosts = computed(() => posts.filter((_, index) => index % 2 === 1))
+const posts = ref([])
+const visiblePosts = computed(() => (posts.value.length ? posts.value : defaultPosts))
+const leftPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 0))
+const rightPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 1))
+
+onMounted(loadPosts)
+
+async function loadPosts() {
+  try {
+    const data = await getCommunityFeed({
+      tab: 'latest',
+      pageSize: 6
+    })
+    posts.value = data?.items || []
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '帖子流加载失败',
+      icon: 'none'
+    })
+  }
+}
 
 function handleActionClick(action) {
   if (action.key === 'match') {

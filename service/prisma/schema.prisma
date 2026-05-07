@@ -20,6 +20,10 @@ model User {
   profileTags  ProfileTag[]
   profilePosts ProfilePost[]
 
+  communityPosts     CommunityPost[]
+  communityComments  CommunityComment[]
+  communityPostLikes CommunityPostLike[]
+
   @@map("users")
 }
 
@@ -60,4 +64,92 @@ model ProfilePost {
 
   @@index([userId, kind])
   @@map("profile_posts")
+}
+
+model CommunityPost {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  title           String   @db.VarChar(40)
+  content         String   @db.VarChar(1000)
+  location        String?  @db.VarChar(100)
+  visibility      String   @default("public") @db.VarChar(16)
+  allowComment    Boolean  @default(true) @map("allow_comment")
+  syncToCommunity Boolean  @default(true) @map("sync_to_community")
+  status          String   @default("published") @db.VarChar(16)
+  likeCount       Int      @default(0) @map("like_count")
+  commentCount    Int      @default(0) @map("comment_count")
+  shareCount      Int      @default(0) @map("share_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  author   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media    CommunityPostMedia[]
+  tags     CommunityPostTag[]
+  comments CommunityComment[]
+  likes    CommunityPostLike[]
+
+  @@index([status, syncToCommunity, createdAt])
+  @@index([userId, createdAt])
+  @@map("community_posts")
+}
+
+model CommunityPostMedia {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  url       String   @db.VarChar(255)
+  type      String   @default("image") @db.VarChar(16)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sort])
+  @@map("community_post_media")
+}
+
+model CommunityPostTag {
+  id     Int    @id @default(autoincrement())
+  postId Int    @map("post_id")
+  name   String @db.VarChar(32)
+  sort   Int    @default(0)
+
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sort])
+  @@index([name])
+  @@map("community_post_tags")
+}
+
+model CommunityPostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("community_post_likes")
+}
+
+model CommunityComment {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  parentId  Int?     @map("parent_id")
+  content   String   @db.VarChar(500)
+  likeCount Int      @default(0) @map("like_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  post    CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies CommunityComment[] @relation("CommentReplies")
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+  @@map("community_comments")
 }
