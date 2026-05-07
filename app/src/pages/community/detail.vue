@@ -232,7 +232,6 @@ async function handleSubmitComment() {
               :key="index"
               class="cover-dot"
               :class="{ 'cover-dot-active': index === currentImageIndex }"
-              :class="{ 'cover-dot-active': index === currentImageIndex }"
             />
           </view>
         </view>
