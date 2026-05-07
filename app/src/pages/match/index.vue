@@ -1,6 +1,28 @@
 <script setup>
+import { ref, computed, onMounted } from 'vue'
 import MatchCard from '@/components/MatchCard.vue'
 import { matchPosts } from '@/pages/data/matches'
+import { getMatchPosts } from '@/api/matches'
+
+const posts = ref([])
+const visiblePosts = computed(() => (posts.value.length ? posts.value : matchPosts))
+
+onMounted(loadMatches)
+
+async function loadMatches() {
+  try {
+    const data = await getMatchPosts({
+      page: 1,
+      pageSize: 20
+    })
+    posts.value = data?.items || []
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '约球列表加载失败',
+      icon: 'none'
+    })
+  }
+}
 
 function handleCreate() {
   uni.navigateTo({
@@ -38,12 +60,12 @@ function handleBack() {
       </view>
 
       <view class="match-summary">
-        <text class="match-summary-text">找到 {{ matchPosts.length }} 个约球帖</text>
+        <text class="match-summary-text">找到 {{ visiblePosts.length }} 个约球帖</text>
       </view>
 
       <view class="match-list">
         <MatchCard
-          v-for="item in matchPosts"
+          v-for="item in visiblePosts"
           :key="item.id"
           :item="item"
           @click="handleCardClick(item)"
