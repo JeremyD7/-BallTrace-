@@ -60,7 +60,7 @@ export class MatchService {
     ]);
 
     return {
-      items: matches.map(this.mapMatchItem),
+      items: matches.map((match) => this.mapMatchItem(match)),
       page,
       pageSize,
       total,
