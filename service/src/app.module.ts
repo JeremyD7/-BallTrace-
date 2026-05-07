@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CommunityModule } from './community/community.module';
 import { ProfileModule } from './profile/profile.module';
+import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     ProfileModule,
     CommunityModule,
+    MatchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

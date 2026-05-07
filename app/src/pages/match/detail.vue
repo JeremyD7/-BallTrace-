@@ -1,15 +1,30 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getMatchById } from '@/pages/data/matches'
+import { getMatchPostDetail, applyMatchPost } from '@/api/matches'
 
 const matchId = ref(1)
+const matchData = ref(null)
 
 onLoad((options) => {
   matchId.value = Number(options?.id || 1)
+  loadMatchDetail()
 })
 
-const match = computed(() => getMatchById(matchId.value) || getMatchById(1))
+async function loadMatchDetail() {
+  try {
+    const data = await getMatchPostDetail(matchId.value)
+    matchData.value = data
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '加载失败',
+      icon: 'none'
+    })
+  }
+}
+
+const match = computed(() => matchData.value || getMatchById(matchId.value) || getMatchById(1))
 const missingCount = computed(() => Math.max((match.value?.total || 0) - (match.value?.joined || 0), 0))
 
 const conditions = computed(() => [
@@ -28,11 +43,22 @@ function handleBack() {
   })
 }
 
-function handleApply() {
-  uni.showToast({
-    title: '申请加入待接入',
-    icon: 'none'
-  })
+async function handleApply() {
+  try {
+    await applyMatchPost(matchId.value)
+    uni.showToast({
+      title: '申请成功',
+      icon: 'success'
+    })
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1500)
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '申请失败',
+      icon: 'none'
+    })
+  }
 }
 </script>
 

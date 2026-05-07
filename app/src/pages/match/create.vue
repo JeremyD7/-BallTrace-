@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { createMatchPost } from '@/api/matches'
 
 const form = ref({
   area: '成华区',
@@ -69,7 +70,7 @@ function buildPayload() {
   }
 }
 
-function handlePublish() {
+async function handlePublish() {
   if (!canPublish.value) {
     uni.showToast({
       title: '请完善约球信息',
@@ -79,12 +80,28 @@ function handlePublish() {
   }
 
   const payload = buildPayload()
-  console.log('create match payload', payload)
 
-  uni.showToast({
-    title: '发布约球接口待接入',
-    icon: 'none'
-  })
+  try {
+    await createMatchPost(payload)
+    uni.showToast({
+      title: '发布成功',
+      icon: 'success'
+    })
+    setTimeout(() => {
+      uni.navigateBack({
+        fail() {
+          uni.reLaunch({
+            url: '/pages/match/index'
+          })
+        }
+      })
+    }, 1500)
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '发布失败，请稍后重试',
+      icon: 'none'
+    })
+  }
 }
 </script>
 
