@@ -1,4 +1,17 @@
 const BASE_URL = 'http://localhost:3000'
+const TOKEN_KEY = 'balltrace_token'
+const LEGACY_AUTH_KEY = 'balltrace_auth'
+
+function getToken() {
+  const token = uni.getStorageSync(TOKEN_KEY)
+
+  if (token) {
+    return token
+  }
+
+  const legacyAuth = uni.getStorageSync(LEGACY_AUTH_KEY)
+  return legacyAuth?.accessToken || ''
+}
 
 function getErrorMessage(payload, fallback = '请求失败，请稍后重试') {
   if (!payload) {
@@ -22,12 +35,15 @@ function getErrorMessage(payload, fallback = '请求失败，请稍后重试') {
 
 export function request({ url, method = 'GET', data, header = {} }) {
   return new Promise((resolve, reject) => {
+    const token = getToken()
+
     uni.request({
       url: `${BASE_URL}${url}`,
       method,
       data,
       header: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...header
       },
       success: (response) => {

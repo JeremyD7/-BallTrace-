@@ -1,10 +1,15 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
 import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
+import { getCommunityFeed } from '@/api/community'
 
 const activeTab = ref('recommend')
 const searchKeyword = ref('')
+const posts = ref([])
+const hasLoaded = ref(false)
+const loading = ref(false)
+let searchTimer
 
 const tabs = [
   {
@@ -103,6 +108,10 @@ const defaultPosts = [
 ]
 
 const visiblePosts = computed(() => {
+  if (hasLoaded.value) {
+    return posts.value
+  }
+
   const keyword = searchKeyword.value.trim().toLowerCase()
 
   return defaultPosts
@@ -135,8 +144,37 @@ const visiblePosts = computed(() => {
 const leftPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 0))
 const rightPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 1))
 
+onMounted(loadPosts)
+
+watch(searchKeyword, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadPosts, 300)
+})
+
+async function loadPosts() {
+  loading.value = true
+
+  try {
+    const data = await getCommunityFeed({
+      tab: activeTab.value,
+      keyword: searchKeyword.value.trim(),
+      pageSize: 20
+    })
+    posts.value = data?.items || []
+    hasLoaded.value = true
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '帖子流加载失败',
+      icon: 'none'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
 function setActiveTab(key) {
   activeTab.value = key
+  loadPosts()
 }
 
 function handleCreatePost() {

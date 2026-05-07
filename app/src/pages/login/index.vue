@@ -1,8 +1,5 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { login, register } from '@/api/auth'
-
-const AUTH_STORAGE_KEY = 'balltrace_auth'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -77,10 +74,6 @@ function toggleConfirmPasswordVisibility() {
   showConfirmPassword.value = !showConfirmPassword.value
 }
 
-function saveAuthSession(authResult) {
-  uni.setStorageSync(AUTH_STORAGE_KEY, authResult)
-}
-
 function enterApp() {
   uni.reLaunch({
     url: '/pages/index/index'
@@ -145,7 +138,7 @@ async function handleLogin() {
   try {
     await authStore.login({
       account: account.value.trim(),
-      password: password.value
+      password: password.value.trim()
     })
     enterApp()
   } catch (error) {
@@ -165,7 +158,7 @@ async function handleRegister() {
     return
   }
 
-  if (confirmPassword.value !== password.value) {
+  if (confirmPassword.value.trim() !== password.value.trim()) {
     showMessage('两次输入的密码不一致')
     return
   }
@@ -175,7 +168,7 @@ async function handleRegister() {
   try {
     await authStore.register({
       account: account.value.trim(),
-      password: password.value,
+      password: password.value.trim(),
       nickname: account.value.trim()
     })
     uni.showToast({
@@ -196,7 +189,14 @@ async function handleSubmit() {
   }
 
   if (isRegisterMode.value) {
-    handleRegister()
+    isSubmitting.value = true
+
+    try {
+      await handleRegister()
+    } finally {
+      isSubmitting.value = false
+    }
+
     return
   }
 

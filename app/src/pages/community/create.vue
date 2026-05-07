@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { createCommunityPost } from '@/api/community'
 
 const title = ref('')
 const content = ref('')
@@ -8,6 +9,7 @@ const visibility = ref('public')
 const allowComment = ref(true)
 const syncToCommunity = ref(true)
 const mediaList = ref([])
+const publishing = ref(false)
 
 const visibilityOptions = [
   {
@@ -31,7 +33,7 @@ const parsedTags = computed(() => {
 })
 
 const canPublish = computed(() => {
-  return title.value.trim().length > 0 && content.value.trim().length > 0
+  return title.value.trim().length > 0 && content.value.trim().length > 0 && !publishing.value
 })
 
 function handleBack() {
@@ -67,7 +69,11 @@ function toggleSyncToCommunity() {
   syncToCommunity.value = !syncToCommunity.value
 }
 
-function handlePublish() {
+async function handlePublish() {
+  if (publishing.value) {
+    return
+  }
+
   if (!title.value.trim()) {
     uni.showToast({
       title: '请输入标题',
@@ -87,19 +93,37 @@ function handlePublish() {
   const payload = {
     title: title.value.trim(),
     content: content.value.trim(),
-    media: mediaList.value,
+    media: mediaList.value.map((item) => ({
+      url: item.url,
+      type: item.type || 'image'
+    })),
     tags: parsedTags.value,
     visibility: visibility.value,
     allowComment: allowComment.value,
     syncToCommunity: syncToCommunity.value
   }
 
-  console.log('create community post payload', payload)
+  publishing.value = true
 
-  uni.showToast({
-    title: '发布接口待接入',
-    icon: 'none'
-  })
+  try {
+    const post = await createCommunityPost(payload)
+    uni.showToast({
+      title: '发布成功',
+      icon: 'success'
+    })
+    setTimeout(() => {
+      uni.redirectTo({
+        url: `/pages/community/detail?id=${post.id}`
+      })
+    }, 300)
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '发布失败',
+      icon: 'none'
+    })
+  } finally {
+    publishing.value = false
+  }
 }
 </script>
 

@@ -22,7 +22,7 @@ function handleClick() {
         <text class="post-title">{{ post.title }}</text>
         <view class="post-footer">
           <view class="post-author">
-            <image class="author-avatar" src="/static/images/jeremy.webp" mode="aspectFill" />
+            <image class="author-avatar" :src="post.avatar || '/static/images/jeremy.webp'" mode="aspectFill" />
             <text class="author-name">{{ post.author }}</text>
           </view>
           <view class="post-like">
