@@ -64,7 +64,7 @@ const panelMessages = {
       id: 1,
       actor: '张伟',
       action: '赞了你的笔记',
-      title: '《网球正手技巧分享》',
+      title: '《投篮发力技巧分享》',
       time: '10分钟前',
       avatar: '/static/images/art_theman.jpg',
       body: ''
@@ -82,7 +82,7 @@ const panelMessages = {
       id: 3,
       actor: '刘洋',
       action: '赞了你的笔记',
-      title: '《双打战术分析》',
+      title: '《3v3 战术拆解》',
       time: '昨天',
       avatar: '/static/images/jeremy.webp',
       body: ''
@@ -91,7 +91,7 @@ const panelMessages = {
       id: 4,
       actor: '陈明',
       action: '评论了你的笔记',
-      title: '《网球装备选购指南》',
+      title: '《篮球装备选购指南》',
       time: '2天前',
       avatar: '/static/images/art_frommoon.jpg',
       body: '鞋子的抓地感确实很关键。'
@@ -110,7 +110,7 @@ const panelMessages = {
       id: 2,
       actor: '系统',
       action: '你的申请已通过',
-      title: '今晚 19:30 高新网球公园',
+      title: '今晚 19:30 高新体育公园篮球场',
       time: '1小时前',
       status: '已通过'
     },
@@ -118,7 +118,7 @@ const panelMessages = {
       id: 3,
       actor: '系统',
       action: '距离约球活动开始还有1小时',
-      title: '武侯网球公园 3号场',
+      title: '武侯体育公园 3号场',
       time: '2小时前',
       status: '提醒'
     },
@@ -126,7 +126,7 @@ const panelMessages = {
       id: 4,
       actor: '系统',
       action: '约球活动已取消',
-      title: '青羊体育中心 双打局',
+      title: '青羊体育中心 3v3 局',
       time: '昨天',
       status: '已取消'
     }
@@ -151,7 +151,7 @@ const panelMessages = {
     {
       id: 3,
       actor: '订场成功',
-      action: '你已成功预订武侯网球公园3号场地',
+      action: '你已成功预订武侯体育公园3号场地',
       title: '周日 18:00-20:00',
       time: '昨天',
       status: '成功'

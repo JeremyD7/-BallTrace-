@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
+import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -18,10 +19,10 @@ const profile = computed(() => authStore.profile || {})
 const user = computed(() => profile.value.user || authStore.user || {})
 const stats = computed(() => profile.value.stats || [])
 const tags = computed(() => profile.value.tags || [])
-const posts = computed(() => {
-  const kind = activeTab.value === 'posts' ? 'post' : activeTab.value
-  return (profile.value.posts || []).filter((item) => item.kind === kind)
-})
+const myPosts = computed(() => (profile.value.posts || []).filter((item) => item.kind === 'post'))
+const savedPosts = computed(() => (profile.value.posts || []).filter((item) => item.kind === 'saved'))
+const leftPosts = computed(() => myPosts.value.filter((_, index) => index % 2 === 0))
+const rightPosts = computed(() => myPosts.value.filter((_, index) => index % 2 === 1))
 const displayName = computed(() => user.value.nickname || user.value.account || 'BallTrace')
 const accountText = computed(() => `BALLTRACE 号：${user.value.account || '--'}`)
 const avatarUrl = computed(() => user.value.avatarUrl || '/static/images/jeremy.webp')
@@ -51,7 +52,7 @@ async function loadProfile() {
     }
 
     uni.showToast({
-      title: '个人资料接口待接入',
+      title: error?.message || '加载失败，请重试',
       icon: 'none'
     })
   } finally {
@@ -70,10 +71,9 @@ function handleTabChange(tab) {
   activeTab.value = tab
 }
 
-function handlePostClick() {
-  uni.showToast({
-    title: '帖子详情待接入',
-    icon: 'none'
+function handlePostClick(post) {
+  uni.navigateTo({
+    url: `/pages/community/detail?id=${post.id}`
   })
 }
 </script>
@@ -130,15 +130,43 @@ function handlePostClick() {
           </view>
         </view>
 
-        <view class="content-grid">
+        <view v-if="activeTab === 'posts' && myPosts.length > 0" class="waterfall-grid">
+          <view class="waterfall-column">
+            <PostWaterfallCard
+              v-for="post in leftPosts"
+              :key="post.id"
+              :post="post"
+              @click="handlePostClick(post)"
+            />
+          </view>
+          <view class="waterfall-column">
+            <PostWaterfallCard
+              v-for="post in rightPosts"
+              :key="post.id"
+              :post="post"
+              @click="handlePostClick(post)"
+            />
+          </view>
+        </view>
+
+        <view v-else-if="activeTab === 'saved' && savedPosts.length > 0" class="content-grid">
           <view
-            v-for="item in posts"
-            :key="`${activeTab}-${item.id}`"
+            v-for="item in savedPosts"
+            :key="`saved-${item.id}`"
             class="content-card"
-            @click="handlePostClick"
+            @click="handlePostClick(item)"
           >
             <image class="content-cover" :src="item.cover" mode="aspectFill" />
           </view>
+        </view>
+
+        <view v-else-if="!loading" class="empty-state">
+          <text class="empty-title">
+            {{ activeTab === 'posts' ? '还没有发布笔记' : '还没有收藏内容' }}
+          </text>
+          <text class="empty-desc">
+            {{ activeTab === 'posts' ? '去社区发布第一条笔记吧' : '浏览社区内容并收藏' }}
+          </text>
         </view>
       </view>
     </view>
@@ -325,6 +353,17 @@ function handlePostClick() {
   gap: 10rpx;
 }
 
+.waterfall-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  align-items: start;
+}
+
+.waterfall-column {
+  min-width: 0;
+}
+
 .content-card {
   position: relative;
   aspect-ratio: 1 / 1.28;
@@ -336,6 +375,25 @@ function handlePostClick() {
 .content-cover {
   width: 100%;
   height: 100%;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 28rpx;
+}
+
+.empty-title {
+  color: #fff7f0;
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  color: rgba(255, 247, 240, 0.5);
+  font-size: 24rpx;
 }
 
 @media screen and (min-width: 768px) {

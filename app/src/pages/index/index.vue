@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
 import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
-import { getCommunityFeed } from '@/api/community'
+import { useCommunityStore } from '@/stores/community'
+
+const communityStore = useCommunityStore()
 
 const quickActions = [
   {
@@ -19,90 +21,41 @@ const quickActions = [
   }
 ]
 
-const defaultPosts = [
-  {
-    id: 1,
-    title: '今晚天府体院馆约球',
-    content: '今晚想在天府体院馆打野，想找两位稳定搭子一起冲，节奏友好，欢迎下班后直接来。',
-    author: '球场拾光',
-    likes: 256,
-    cover: '/static/images/art_theman.jpg'
-  },
-  {
-    id: 2,
-    title: '新手热身动作清单',
-    content: '第一次参加周末球局，整理了一份适合开打前做的热身动作清单，想分享给刚入门的朋友。',
-    author: '张三',
-    likes: 189,
-    cover: '/static/images/art_thewoman.jpg'
-  },
-  {
-    id: 3,
-    title: '市区夜场球场推荐',
-    content: '市区夜场灯光意外不错，这片球场拍照真的很出片，地面反馈也很稳，适合晚上约球。',
-    author: 'Ace慢热',
-    likes: 321,
-    cover: '/static/images/art_frommoon.jpg'
-  },
-  {
-    id: 4,
-    title: '训练后的恢复安排',
-    content: '练完后做了一组力量恢复，把我最近在用的训练和放松节奏整理出来，给大家参考。',
-    author: '后场观察员',
-    likes: 145,
-    cover: '/static/images/theman02.jpg'
-  },
-  {
-    id: 5,
-    title: '球鞋抓地力实测',
-    content: '测试了同一双球鞋在湿地和硬地两种场景里的表现，抓地差别比想象里更大，分享一下感受。',
-    author: '落点实验室',
-    likes: 274,
-    cover: '/static/images/earth.jpg'
-  },
-  {
-    id: 6,
-    title: '发帖卡片结构示意',
-    content: '这是一个发帖占位卡片示意，后面接接口后可以直接替换成真实内容流和详情内容。',
-    author: 'BallTrace',
-    likes: 98,
-    cover: '/static/images/art_frommoon.jpg'
-  }
-]
+const hasLoaded = ref(false)
 
-const posts = ref([])
-const visiblePosts = computed(() => (posts.value.length ? posts.value : defaultPosts))
+const posts = computed(() => communityStore.posts)
+const loading = computed(() => communityStore.loading)
+const visiblePosts = computed(() => posts.value)
 const leftPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 0))
 const rightPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 1))
 
 onMounted(loadPosts)
 
-async function loadPosts() {
+async function loadPosts(forceRefresh = false) {
   try {
-    const data = await getCommunityFeed({
-      tab: 'latest',
-      pageSize: 6
-    })
-    posts.value = data?.items || []
+    await communityStore.fetchPosts(forceRefresh)
   } catch (error) {
     uni.showToast({
       title: error?.message || '帖子流加载失败',
       icon: 'none'
     })
+  } finally {
+    hasLoaded.value = true
   }
+}
+
+async function onRefresh() {
+  await loadPosts(true)
+  uni.showToast({
+    title: '刷新成功',
+    icon: 'none'
+  })
 }
 
 function handleActionClick(action) {
   if (action.key === 'match') {
     uni.navigateTo({
-      url: '/pages/match/create'
-    })
-    return
-  }
-
-  if (action.key === 'post') {
-    uni.navigateTo({
-      url: '/pages/community/create'
+      url: '/pages/match/index'
     })
     return
   }
@@ -128,7 +81,13 @@ function handlePostClick(post) {
 </script>
 
 <template>
-  <scroll-view class="page" scroll-y>
+  <scroll-view
+    class="page"
+    scroll-y
+    refresher-enabled
+    :refresher-triggered="loading"
+    @refresherrefresh="onRefresh"
+  >
     <view class="page-shell">
       <view class="brand-row">
         <image class="brand-logo" src="@/static/images/logo.png" mode="aspectFit" />
@@ -147,10 +106,10 @@ function handlePostClick(post) {
 
       <view class="section-head">
         <text class="section-title">最新帖子</text>
-        <text class="section-note">瀑布流静态示意</text>
+        <text v-if="loading" class="section-note">加载中...</text>
       </view>
 
-      <view class="waterfall-grid">
+      <view v-if="visiblePosts.length" class="waterfall-grid">
         <view class="waterfall-column">
           <PostWaterfallCard v-for="post in leftPosts" :key="post.id" :post="post" @click="handlePostClick(post)" />
         </view>
@@ -158,6 +117,11 @@ function handlePostClick(post) {
         <view class="waterfall-column">
           <PostWaterfallCard v-for="post in rightPosts" :key="post.id" :post="post" @click="handlePostClick(post)" />
         </view>
+      </view>
+
+      <view v-else-if="hasLoaded && !loading" class="empty-card">
+        <text class="empty-title">暂无帖子</text>
+        <text class="empty-copy">稍后再试，或去社区发布第一条内容</text>
       </view>
     </view>
 
@@ -261,6 +225,29 @@ function handlePostClick(post) {
 .section-note {
   color: rgba(244, 244, 244, 0.42);
   font-size: 22rpx;
+}
+
+.empty-card {
+  margin-top: 28rpx;
+  padding: 36rpx 28rpx;
+  border-radius: 32rpx;
+  border: 1rpx solid rgba(255, 247, 240, 0.08);
+  background: rgba(36, 35, 35, 0.92);
+}
+
+.empty-title {
+  display: block;
+  color: #f4f4f4;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.empty-copy {
+  display: block;
+  margin-top: 12rpx;
+  color: rgba(244, 244, 244, 0.5);
+  font-size: 24rpx;
+  line-height: 1.6;
 }
 
 .waterfall-grid {
