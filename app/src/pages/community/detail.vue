@@ -215,12 +215,23 @@ async function handleSubmitComment() {
         </view>
 
         <view class="cover-card">
-          <image class="cover-image" :src="activeCover" mode="aspectFill" />
+          <swiper
+            class="cover-swiper"
+            :current="currentImageIndex"
+            circular
+            :indicator-dots="false"
+            @change="handleCoverChange"
+          >
+            <swiper-item v-for="(image, index) in coverImages" :key="`${image}-${index}`">
+              <image class="cover-image" :src="image" mode="aspectFill" />
+            </swiper-item>
+          </swiper>
           <view class="cover-dots">
             <view
               v-for="(_, index) in currentPost.coverImages"
               :key="index"
               class="cover-dot"
+              :class="{ 'cover-dot-active': index === currentImageIndex }"
               :class="{ 'cover-dot-active': index === currentImageIndex }"
             />
           </view>
@@ -395,6 +406,7 @@ async function handleSubmitComment() {
   box-shadow: 0 20rpx 44rpx rgba(0, 0, 0, 0.24);
 }
 
+.cover-swiper,
 .cover-image {
   width: 100%;
   height: 100%;
