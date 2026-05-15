@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   post: {
     type: Object,
     required: true
@@ -7,6 +9,11 @@ defineProps({
 })
 
 const emit = defineEmits(['click'])
+
+const mediaList = computed(() => props.post.media || [])
+const coverUrl = computed(() => mediaList.value[0]?.url || props.post.cover || '')
+const isVideo = computed(() => mediaList.value[0]?.type === 'video')
+const mediaCount = computed(() => mediaList.value.length)
 
 function handleClick() {
   emit('click')
@@ -16,7 +23,13 @@ function handleClick() {
 <template>
   <view class="post-card" @click="handleClick">
     <view class="post-media">
-      <image class="post-cover" :src="post.cover" mode="aspectFill" />
+      <image class="post-cover" :src="coverUrl" mode="aspectFill" />
+      <view v-if="isVideo" class="video-badge">
+        <text class="video-icon">▶</text>
+      </view>
+      <view v-if="mediaCount > 1" class="media-count-badge">
+        <text class="count-text">{{ mediaCount }}</text>
+      </view>
       <view class="post-overlay" />
       <view class="post-meta">
         <text class="post-title">{{ post.title }}</text>
@@ -60,6 +73,40 @@ function handleClick() {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.video-badge {
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.video-icon {
+  color: #f4f4f4;
+  font-size: 24rpx;
+  margin-left: 4rpx;
+}
+
+.media-count-badge {
+  position: absolute;
+  top: 24rpx;
+  left: 24rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 12rpx;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.count-text {
+  color: #f4f4f4;
+  font-size: 24rpx;
+  font-weight: 600;
 }
 
 .post-overlay {
