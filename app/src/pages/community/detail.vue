@@ -13,15 +13,18 @@ const commentText = ref('')
 const post = ref(null)
 const comments = ref([])
 const commentsLoaded = ref(false)
-const currentImageIndex = ref(0)
+const currentMediaIndex = ref(0)
 const loading = ref(false)
+const videoPlaying = ref(false)
 
 const currentPost = computed(() => post.value)
 const commentList = computed(() => (commentsLoaded.value ? comments.value : []))
-const coverImages = computed(() => currentPost.value?.coverImages || [])
-const activeCover = computed(() => {
-  return coverImages.value[currentImageIndex.value] || coverImages.value[0]
-})
+const mediaList = computed(() => currentPost.value?.media || [])
+const hasMedia = computed(() => mediaList.value.length > 0)
+const currentMedia = computed(() => mediaList.value[currentMediaIndex.value])
+const isVideo = computed(() => currentMedia.value?.type === 'video')
+const imageCount = computed(() => mediaList.value.filter(m => m.type === 'image').length)
+const hasMultipleMedia = computed(() => mediaList.value.length > 1)
 
 onLoad((query) => {
   if (query?.id) {
@@ -69,8 +72,17 @@ function handleShare() {
   })
 }
 
-function handleCoverChange(event) {
-  currentImageIndex.value = event?.detail?.current || 0
+function handleMediaChange(event) {
+  currentMediaIndex.value = event?.detail?.current || 0
+  videoPlaying.value = false
+}
+
+function handleVideoPlay() {
+  videoPlaying.value = true
+}
+
+function handleVideoPause() {
+  videoPlaying.value = false
 }
 
 async function handleLike() {
@@ -159,25 +171,40 @@ async function handleSubmitComment() {
             </view>
           </view>
 
-          <view v-if="coverImages.length" class="cover-card">
+          <view v-if="hasMedia" class="media-card">
             <swiper
-              class="cover-swiper"
-              :current="currentImageIndex"
+              class="media-swiper"
+              :current="currentMediaIndex"
               circular
               :indicator-dots="false"
-              @change="handleCoverChange"
+              @change="handleMediaChange"
             >
-              <swiper-item v-for="(image, index) in coverImages" :key="`${image}-${index}`">
-                <image class="cover-image" :src="image" mode="aspectFill" />
+              <swiper-item v-for="(media, index) in mediaList" :key="`${media.url}-${index}`">
+                <view class="media-container">
+                  <image v-if="media.type === 'image'" class="media-image" :src="media.url" mode="aspectFill" />
+                  <view v-else class="video-container">
+                    <video
+                      class="media-video"
+                      :src="media.url"
+                      autoplay
+                      loop
+                      muted
+                      :controls="false"
+                      show-center-play-btn="false"
+                      @play="handleVideoPlay"
+                      @pause="handleVideoPause"
+                    />
+                    <view v-if="!videoPlaying" class="video-overlay" @click="handleVideoPlay">
+                      <view class="video-play-btn">
+                        <text class="play-icon">▶</text>
+                      </view>
+                    </view>
+                  </view>
+                </view>
               </swiper-item>
             </swiper>
-            <view class="cover-dots">
-              <view
-                v-for="(_, index) in coverImages"
-                :key="index"
-                class="cover-dot"
-                :class="{ 'cover-dot-active': index === currentImageIndex }"
-              />
+            <view v-if="hasMultipleMedia" class="media-indicator">
+              <text class="indicator-text">{{ currentMediaIndex + 1 }}/{{ mediaList.length }}</text>
             </view>
           </view>
 
@@ -363,43 +390,82 @@ async function handleSubmitComment() {
   font-size: 23rpx;
 }
 
-.cover-card {
+.media-card {
   position: relative;
-  height: 690rpx;
   margin-top: 36rpx;
   overflow: hidden;
-  border: 1rpx solid rgba(255, 247, 240, 0.08);
   border-radius: 32rpx;
-  background: #242323;
-  box-shadow: 0 20rpx 44rpx rgba(0, 0, 0, 0.24);
+  background: #1a1a1a;
 }
 
-.cover-swiper,
-.cover-image {
+.media-swiper {
+  width: 100%;
+  height: 750rpx;
+}
+
+.media-container {
   width: 100%;
   height: 100%;
 }
 
-.cover-dots {
+.media-image {
+  width: 100%;
+  height: 100%;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.media-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-overlay {
   position: absolute;
-  right: 0;
-  bottom: 26rpx;
+  top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.cover-dot {
-  width: 12rpx;
-  height: 12rpx;
-  margin: 0 8rpx;
+.video-play-btn {
+  width: 100rpx;
+  height: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
-  background: rgba(255, 247, 240, 0.42);
+  background: rgba(244, 244, 244, 0.9);
 }
 
-.cover-dot-active {
-  background: $brand-color;
+.video-play-btn .play-icon {
+  color: #1a1a1a;
+  font-size: 40rpx;
+  margin-left: 8rpx;
+}
+
+.media-indicator {
+  position: absolute;
+  right: 24rpx;
+  bottom: 24rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.indicator-text {
+  color: #f4f4f4;
+  font-size: 24rpx;
+  font-weight: 500;
 }
 
 .content-section {

@@ -40,6 +40,10 @@ export function mapPostListItem(post: CommunityPostRecord) {
     author: getAuthorName(post.author),
     avatar: getAvatar(post.author),
     cover: getCover(post),
+    media: post.media.map((item) => ({
+      url: item.url,
+      type: item.type,
+    })),
     likes: post.likeCount,
     comments: post.commentCount,
     tags: post.tags.map((tag) => tag.name),
@@ -60,6 +64,10 @@ export function mapPostDetail(post: CommunityPostRecord, isLiked = false) {
       avatar: getAvatar(post.author),
     },
     coverImages: coverImages.length > 0 ? coverImages : [DEFAULT_POST_COVER],
+    media: post.media.map((item) => ({
+      url: item.url,
+      type: item.type,
+    })),
     likes: post.likeCount,
     comments: post.commentCount,
     shares: post.shareCount,
