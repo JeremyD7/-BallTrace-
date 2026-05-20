@@ -7,7 +7,8 @@ export const useCommunityStore = defineStore('community', {
   state: () => ({
     posts: [],
     lastFetchTime: 0,
-    loading: false
+    loading: false,
+    fetching: false
   }),
 
   getters: {
@@ -17,10 +18,15 @@ export const useCommunityStore = defineStore('community', {
 
   actions: {
     async fetchPosts(forceRefresh = false) {
+      if (this.fetching) {
+        return this.posts
+      }
+
       if (!forceRefresh && this.hasCache && !this.isCacheExpired) {
         return this.posts
       }
 
+      this.fetching = true
       this.loading = true
       try {
         const data = await getCommunityFeed({ tab: 'latest', pageSize: 20 })
@@ -28,6 +34,7 @@ export const useCommunityStore = defineStore('community', {
         this.lastFetchTime = Date.now()
         return this.posts
       } finally {
+        this.fetching = false
         this.loading = false
       }
     },

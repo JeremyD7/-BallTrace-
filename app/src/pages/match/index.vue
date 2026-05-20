@@ -1,11 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import MatchCard from '@/components/MatchCard.vue'
-import { matchPosts } from '@/pages/data/matches'
 import { getMatchPosts } from '@/api/matches'
 
 const posts = ref([])
-const visiblePosts = computed(() => (posts.value.length ? posts.value : matchPosts))
+const visiblePosts = computed(() => posts.value)
 
 onMounted(loadMatches)
 
@@ -37,13 +36,20 @@ function handleCardClick(item) {
 }
 
 function handleBack() {
-  uni.navigateBack({
-    fail() {
-      uni.reLaunch({
-        url: '/pages/index/index'
-      })
-    }
-  })
+  const pages = getCurrentPages()
+
+  if (pages.length > 1) {
+    uni.navigateBack()
+  } else {
+    // #ifdef H5
+    window.location.href = '/#/pages/index/index'
+    // #endif
+    // #ifndef H5
+    uni.switchTab({
+      url: '/pages/index/index'
+    })
+    // #endif
+  }
 }
 </script>
 

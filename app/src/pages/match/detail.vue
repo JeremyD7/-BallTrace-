@@ -1,11 +1,11 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getMatchById } from '@/pages/data/matches'
 import { getMatchPostDetail, applyMatchPost } from '@/api/matches'
 
 const matchId = ref(1)
 const matchData = ref(null)
+const loading = ref(true)
 
 onLoad((options) => {
   matchId.value = Number(options?.id || 1)
@@ -21,10 +21,12 @@ async function loadMatchDetail() {
       title: error?.message || '加载失败',
       icon: 'none'
     })
+  } finally {
+    loading.value = false
   }
 }
 
-const match = computed(() => matchData.value || getMatchById(matchId.value) || getMatchById(1))
+const match = computed(() => matchData.value)
 const missingCount = computed(() => Math.max((match.value?.total || 0) - (match.value?.joined || 0), 0))
 
 const conditions = computed(() => [
@@ -34,13 +36,20 @@ const conditions = computed(() => [
 ])
 
 function handleBack() {
-  uni.navigateBack({
-    fail() {
-      uni.reLaunch({
-        url: '/pages/match/index'
-      })
-    }
-  })
+  const pages = getCurrentPages()
+
+  if (pages.length > 1) {
+    uni.navigateBack()
+  } else {
+    // #ifdef H5
+    window.location.href = '/#/pages/match/index'
+    // #endif
+    // #ifndef H5
+    uni.switchTab({
+      url: '/pages/match/index'
+    })
+    // #endif
+  }
 }
 
 async function handleApply() {
@@ -64,7 +73,12 @@ async function handleApply() {
 
 <template>
   <scroll-view class="detail-page" scroll-y>
-    <view class="detail-shell" v-if="match">
+    <view v-if="loading" class="loading-wrap">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view v-else-if="match" class="detail-shell">
       <view class="detail-topbar">
         <text class="detail-back" @click="handleBack">‹</text>
         <text class="detail-title">活动详情</text>
@@ -152,6 +166,35 @@ async function handleApply() {
   background:
     radial-gradient(circle at top right, rgba(217, 122, 63, 0.18), transparent 24%),
     linear-gradient(180deg, #121110 0%, #111111 44%, #151311 100%);
+}
+
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 24rpx;
+}
+
+.loading-spinner {
+  width: 64rpx;
+  height: 64rpx;
+  border: 4rpx solid rgba(255, 247, 240, 0.16);
+  border-top-color: $brand-color;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  color: rgba(244, 244, 244, 0.5);
+  font-size: 28rpx;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .detail-shell {
