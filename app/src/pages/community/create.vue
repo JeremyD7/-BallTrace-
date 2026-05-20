@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { createCommunityPost } from '@/api/community'
+import { createCommunityPost, uploadCommunityMedia } from '@/api/community'
 
 const title = ref('')
 const content = ref('')
@@ -10,6 +10,10 @@ const allowComment = ref(true)
 const syncToCommunity = ref(true)
 const mediaList = ref([])
 const publishing = ref(false)
+const uploading = ref(false)
+
+const MAX_IMAGES = 9
+const MAX_VIDEOS = 1
 
 const visibilityOptions = [
   {
@@ -33,7 +37,18 @@ const parsedTags = computed(() => {
 })
 
 const canPublish = computed(() => {
-  return title.value.trim().length > 0 && content.value.trim().length > 0 && !publishing.value
+  return (title.value.trim().length > 0 || content.value.trim().length > 0 || mediaList.value.length > 0) && !publishing.value
+})
+
+const hasVideo = computed(() => {
+  return mediaList.value.some(item => item.type === 'video')
+})
+
+const remainingSlots = computed(() => {
+  if (hasVideo.value) {
+    return 0
+  }
+  return MAX_IMAGES - mediaList.value.length
 })
 
 function handleBack() {
@@ -46,11 +61,159 @@ function handleBack() {
   })
 }
 
-function handleChooseMedia() {
-  uni.showToast({
-    title: '媒体上传接口待接入',
-    icon: 'none'
+async function handleChooseMedia() {
+  if (hasVideo.value) {
+    uni.showToast({
+      title: '已选择视频，不能再添加其他媒体',
+      icon: 'none'
+    })
+    return
+  }
+
+  if (process.env.NODE_ENV === 'development' || typeof window !== 'undefined') {
+    handleWebChooseMedia()
+    return
+  }
+
+  uni.chooseMedia({
+    count: remainingSlots.value,
+    mediaType: ['image', 'video'],
+    sourceType: ['album', 'camera'],
+    maxDuration: 60,
+    camera: 'back',
+    success: async (res) => {
+      uploading.value = true
+      
+      try {
+        const tempFiles = res.tempFiles
+        const uploadResults = await uploadCommunityMedia(tempFiles)
+        
+        if (uploadResults.success && uploadResults.data.length > 0) {
+          const newMedia = uploadResults.data.map((result, index) => ({
+            id: result.filename,
+            url: result.url,
+            type: result.type,
+            localPath: tempFiles[index].tempFilePath
+          }))
+          mediaList.value = [...mediaList.value, ...newMedia]
+        } else {
+          uni.showToast({
+            title: uploadResults.message || '上传失败',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        uni.showToast({
+          title: error.message || '上传失败',
+          icon: 'none'
+        })
+      } finally {
+        uploading.value = false
+      }
+    },
+    fail: () => {
+      uni.showToast({
+        title: '选择媒体失败',
+        icon: 'none'
+      })
+    }
   })
+}
+
+function handleWebChooseMedia() {
+  const input = document.createElement('input')
+  const acceptTypes = hasVideo.value ? 'video/*' : 'image/*'
+  
+  input.type = 'file'
+  input.accept = acceptTypes
+  input.multiple = !hasVideo.value && remainingSlots.value > 1
+  input.style.display = 'none'
+  
+  input.onchange = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    
+    uploading.value = true
+    
+    try {
+      const tempFiles = files.map((file) => ({
+        tempFilePath: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+        type: file.type
+      }))
+      
+      const uploadResults = await uploadCommunityMediaWeb(files)
+      
+      if (uploadResults.success && uploadResults.data.length > 0) {
+        const newMedia = uploadResults.data.map((result, index) => ({
+          id: result.filename,
+          url: result.url,
+          type: result.type,
+          localPath: tempFiles[index].tempFilePath
+        }))
+        mediaList.value = [...mediaList.value, ...newMedia]
+      } else {
+        uni.showToast({
+          title: uploadResults.message || '上传失败',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      uni.showToast({
+        title: error.message || '上传失败',
+        icon: 'none'
+      })
+    } finally {
+      uploading.value = false
+      document.body.removeChild(input)
+    }
+  }
+  
+  document.body.appendChild(input)
+  input.click()
+}
+
+async function uploadCommunityMediaWeb(files) {
+  const token = uni.getStorageSync('balltrace_token') || localStorage.getItem('balltrace_token') || ''
+  const BASE_URL = 'http://localhost:3000'
+  const results = []
+  const errors = []
+  
+  for (const file of files) {
+    const formData = new FormData()
+    formData.append('files', file)
+    
+    try {
+      const response = await fetch(`${BASE_URL}/upload/media`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: formData
+      })
+      
+      if (!response.ok) {
+        errors.push(`HTTP error: ${response.status}`)
+        continue
+      }
+      
+      const data = await response.json()
+      if (data.success && data.data && data.data.length > 0) {
+        results.push(...data.data)
+      } else {
+        errors.push(data.message || '上传失败')
+      }
+    } catch (error) {
+      errors.push(error.message || '网络错误')
+    }
+  }
+  
+  return {
+    success: errors.length === 0,
+    message: errors.length > 0 ? errors.join('; ') : '上传成功',
+    data: results
+  }
 }
 
 function removeMedia(index) {
@@ -183,13 +346,23 @@ async function handlePublish() {
               :key="item.id || index"
               class="media-item"
             >
-              <image class="media-preview" :src="item.url" mode="aspectFill" />
+              <image v-if="item.type === 'image'" class="media-preview" :src="item.url" mode="aspectFill" />
+              <view v-else class="video-preview">
+                <image class="video-thumb" :src="item.url" mode="aspectFill" />
+                <view class="play-icon">
+                  <text class="play-icon-inner">▶</text>
+                </view>
+              </view>
               <text class="media-remove" @click="removeMedia(index)">×</text>
             </view>
 
-            <view class="upload-card" @click="handleChooseMedia">
+            <view v-if="remainingSlots > 0 && !uploading" class="upload-card" @click="handleChooseMedia">
               <text class="upload-plus">+</text>
-              <text class="upload-text">添加媒体</text>
+              <text class="upload-text">{{ hasVideo ? '添加视频' : '添加媒体' }}</text>
+            </view>
+            <view v-else-if="uploading" class="upload-card uploading">
+              <view class="loading-spinner"></view>
+              <text class="upload-text">上传中...</text>
             </view>
           </view>
         </view>
@@ -395,6 +568,37 @@ async function handlePublish() {
   height: 100%;
 }
 
+.video-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.video-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(17, 17, 17, 0.7);
+}
+
+.play-icon-inner {
+  color: #f4f4f4;
+  font-size: 28rpx;
+  margin-left: 4rpx;
+}
+
 .media-remove {
   position: absolute;
   top: 10rpx;
@@ -430,6 +634,25 @@ async function handlePublish() {
   margin-top: 12rpx;
   color: rgba(255, 247, 240, 0.68);
   font-size: 24rpx;
+}
+
+.upload-card.uploading {
+  pointer-events: none;
+}
+
+.loading-spinner {
+  width: 40rpx;
+  height: 40rpx;
+  border: 3rpx solid rgba(217, 122, 63, 0.3);
+  border-top-color: $brand-color;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .tag-preview {
