@@ -16,9 +16,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
-  profileStats ProfileStat[]
-  profileTags  ProfileTag[]
-  profilePosts ProfilePost[]
+  profileStats    ProfileStat[]
+  profileTags     ProfileTag[]
+  profilePosts    ProfilePost[]
+  notifications   Notification[]
 
   communityPosts     CommunityPost[]
   communityComments  CommunityComment[]
@@ -191,7 +192,7 @@ model MatchParticipant {
   matchId   Int      @map("match_id")
   userId    Int      @map("user_id")
   role      String   @db.VarChar(16) @default("participant")
-  status    String   @default("joined") @db.VarChar(16)
+  status    String   @default("pending") @db.VarChar(16)
   createdAt DateTime @default(now()) @map("created_at")
 
   match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
@@ -201,4 +202,26 @@ model MatchParticipant {
   @@index([matchId])
   @@index([userId])
   @@map("match_participants")
+}
+
+model Notification {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  type         String   @db.VarChar(16)
+  sourceType   String   @map("source_type") @db.VarChar(16)
+  sourceId     Int      @map("source_id")
+  actorId      Int      @map("actor_id")
+  actorName    String   @map("actor_name") @db.VarChar(50)
+  actorAvatar  String?  @map("actor_avatar")
+  title        String   @db.VarChar(100)
+  content      String?  @db.VarChar(500)
+  status       String   @default("unread") @db.VarChar(16)
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([sourceType, sourceId])
+  @@map("notifications")
 }

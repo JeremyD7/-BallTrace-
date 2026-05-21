@@ -1,15 +1,21 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import AppTabBar from '@/components/AppTabBar.vue'
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead, subscribeNotifications } from '@/api/messages'
 
 const currentPanel = ref('overview')
+const loading = ref(true)
+const notifications = ref([])
+const unreadCount = ref(0)
+let eventSource = null
 
-const categoryCards = [
+const categoryCards = computed(() => [
   {
     key: 'explore',
     title: '探索消息',
     caption: '点赞、评论和笔记互动',
-    count: 3,
+    count: notifications.value.filter(n => ['like', 'comment', 'follow', 'collect'].includes(n.type)).length,
     tone: 'orange',
     icon: '/static/images/post.svg'
   },
@@ -17,7 +23,7 @@ const categoryCards = [
     key: 'match',
     title: '球局通知',
     caption: '约球申请、通过和活动提醒',
-    count: 5,
+    count: notifications.value.filter(n => ['match_apply', 'match_approved', 'match_rejected'].includes(n.type)).length,
     tone: 'green',
     icon: '/static/images/basketball.svg'
   },
@@ -25,11 +31,11 @@ const categoryCards = [
     key: 'system',
     title: '系统消息',
     caption: '订场、课程和平台通知',
-    count: 2,
+    count: 0,
     tone: 'blue',
     icon: '/static/images/message.svg'
   }
-]
+])
 
 const directMessages = [
   {
@@ -58,115 +64,6 @@ const directMessages = [
   }
 ]
 
-const panelMessages = {
-  explore: [
-    {
-      id: 1,
-      actor: '张伟',
-      action: '赞了你的笔记',
-      title: '《投篮发力技巧分享》',
-      time: '10分钟前',
-      avatar: '/static/images/art_theman.jpg',
-      body: ''
-    },
-    {
-      id: 2,
-      actor: '李娜',
-      action: '评论了你的笔记',
-      title: '《成华区好球场推荐》',
-      time: '1小时前',
-      avatar: '/static/images/art_thewoman.jpg',
-      body: '这家场地晚上灯光不错，下次一起去。'
-    },
-    {
-      id: 3,
-      actor: '刘洋',
-      action: '赞了你的笔记',
-      title: '《3v3 战术拆解》',
-      time: '昨天',
-      avatar: '/static/images/jeremy.webp',
-      body: ''
-    },
-    {
-      id: 4,
-      actor: '陈明',
-      action: '评论了你的笔记',
-      title: '《篮球装备选购指南》',
-      time: '2天前',
-      avatar: '/static/images/art_frommoon.jpg',
-      body: '鞋子的抓地感确实很关键。'
-    }
-  ],
-  match: [
-    {
-      id: 1,
-      actor: '李娜',
-      action: '申请加入你发起的约球活动',
-      title: '周六 16:00 成华体育中心',
-      time: '10分钟前',
-      status: '待处理'
-    },
-    {
-      id: 2,
-      actor: '系统',
-      action: '你的申请已通过',
-      title: '今晚 19:30 高新体育公园篮球场',
-      time: '1小时前',
-      status: '已通过'
-    },
-    {
-      id: 3,
-      actor: '系统',
-      action: '距离约球活动开始还有1小时',
-      title: '武侯体育公园 3号场',
-      time: '2小时前',
-      status: '提醒'
-    },
-    {
-      id: 4,
-      actor: '系统',
-      action: '约球活动已取消',
-      title: '青羊体育中心 3v3 局',
-      time: '昨天',
-      status: '已取消'
-    }
-  ],
-  system: [
-    {
-      id: 1,
-      actor: '订场成功',
-      action: '你已成功预订成华体育中心1号场地',
-      title: '今天 20:00-22:00',
-      time: '10分钟前',
-      status: '成功'
-    },
-    {
-      id: 2,
-      actor: '约教练成功',
-      action: '你已成功预约教练李明的1v1课程',
-      title: '明天 15:00-16:00',
-      time: '1小时前',
-      status: '课程'
-    },
-    {
-      id: 3,
-      actor: '订场成功',
-      action: '你已成功预订武侯体育公园3号场地',
-      title: '周日 18:00-20:00',
-      time: '昨天',
-      status: '成功'
-    },
-    {
-      id: 4,
-      actor: '订场取消',
-      action: '你的订场已取消，费用已退回',
-      title: '退款将在1-3个工作日内到账',
-      time: '3天前',
-      status: '退款'
-    }
-  ]
-}
-
 const panelMeta = {
   explore: {
     title: '探索消息',
@@ -187,8 +84,76 @@ const panelMeta = {
 
 const isOverview = computed(() => currentPanel.value === 'overview')
 const activeMeta = computed(() => panelMeta[currentPanel.value] || panelMeta.explore)
-const activeMessages = computed(() => panelMessages[currentPanel.value] || [])
+
+const activeMessages = computed(() => {
+  const typeMap = {
+    explore: ['like', 'comment', 'follow', 'collect'],
+    match: ['match_apply', 'match_approved', 'match_rejected'],
+    system: []
+  }
+  const types = typeMap[currentPanel.value] || []
+  if (types.length === 0) return []
+  return notifications.value.filter(n => types.includes(n.type))
+})
+
 const unreadDirectCount = computed(() => directMessages.filter((item) => item.unread).length)
+
+function formatTime(isoString) {
+  const date = new Date(isoString)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const days = Math.floor(hours / 24)
+
+  if (hours < 1) return '刚刚'
+  if (hours < 24) return `${hours}小时前`
+  if (days < 7) return `${days}天前`
+  return date.toLocaleDateString('zh-CN')
+}
+
+function getActionText(type, actorName) {
+  const actions = {
+    follow: `${actorName} 关注了您`,
+    like: `${actorName} 赞了您的笔记`,
+    comment: `${actorName} 评论了您的笔记`,
+    collect: `${actorName} 收藏了您的笔记`,
+    match_apply: `${actorName} 申请加入您发起的约球活动`,
+    match_approved: '您的约球申请已通过',
+    match_rejected: '您的约球申请未通过'
+  }
+  return actions[type] || actorName
+}
+
+function getStatusText(type) {
+  const statusMap = {
+    match_apply: '待处理',
+    match_approved: '已通过',
+    match_rejected: '已拒绝'
+  }
+  return statusMap[type] || ''
+}
+
+async function loadNotifications() {
+  try {
+    loading.value = true
+    const data = await getNotifications()
+    notifications.value = data.items || []
+    await loadUnreadCount()
+  } catch (error) {
+    console.error('加载通知失败', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadUnreadCount() {
+  try {
+    const data = await getUnreadCount()
+    unreadCount.value = data.count || 0
+  } catch (error) {
+    console.error('获取未读数量失败', error)
+  }
+}
 
 function openPanel(key) {
   currentPanel.value = key
@@ -198,9 +163,16 @@ function handleBack() {
   currentPanel.value = 'overview'
 }
 
-function handleMessageTap(item) {
+async function handleMessageTap(item) {
+  try {
+    await markAsRead(item.id)
+    loadUnreadCount()
+  } catch (error) {
+    console.error('标记已读失败', error)
+  }
+  
   uni.showToast({
-    title: `${item.actor || item.name} 的消息待接入`,
+    title: `${item.actor?.name || '通知'} 详情待接入`,
     icon: 'none'
   })
 }
@@ -211,6 +183,51 @@ function handleDirectTap(item) {
     icon: 'none'
   })
 }
+
+function initSSE() {
+  if (eventSource) {
+    eventSource.close()
+  }
+  
+  try {
+    eventSource = subscribeNotifications((notification) => {
+      notifications.value.unshift(notification)
+      loadUnreadCount()
+      
+      uni.showToast({
+        title: `收到新通知: ${notification.title}`,
+        icon: 'none',
+        duration: 2000
+      })
+    })
+  } catch (e) {
+    console.warn('SSE不可用，将使用轮询方式', e)
+  }
+}
+
+function stopSSE() {
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+}
+
+onMounted(() => {
+  loadNotifications()
+})
+
+onShow(() => {
+  loadUnreadCount()
+  initSSE()
+})
+
+onHide(() => {
+  stopSSE()
+})
+
+onUnmounted(() => {
+  stopSSE()
+})
 </script>
 
 <template>
@@ -278,32 +295,38 @@ function handleDirectTap(item) {
       </view>
 
       <view v-else class="panel-content">
-        <view v-if="activeMessages.length" class="notice-list">
+        <view v-if="loading" class="loading-wrap">
+          <view class="loading-spinner"></view>
+          <text class="loading-text">加载中...</text>
+        </view>
+
+        <view v-else-if="activeMessages.length" class="notice-list">
           <view
             v-for="item in activeMessages"
             :key="item.id"
             class="notice-card"
+            :class="{ 'notice-card-unread': item.status === 'unread' }"
             @click="handleMessageTap(item)"
           >
             <view class="notice-top">
-              <view v-if="item.avatar" class="notice-avatar-wrap">
-                <image class="notice-avatar" :src="item.avatar" mode="aspectFill" />
+              <view v-if="item.actor?.avatar" class="notice-avatar-wrap">
+                <image class="notice-avatar" :src="item.actor.avatar" mode="aspectFill" />
               </view>
               <view v-else class="notice-icon">
-                <text class="notice-icon-text">{{ item.actor.slice(0, 1) }}</text>
+                <text class="notice-icon-text">{{ item.actor?.name?.slice(0, 1) || '?' }}</text>
               </view>
               <view class="notice-main">
                 <view class="notice-title-row">
-                  <text class="notice-actor">{{ item.actor }}</text>
-                  <text class="notice-time">{{ item.time }}</text>
+                  <text class="notice-actor">{{ item.actor?.name || '系统' }}</text>
+                  <text class="notice-time">{{ formatTime(item.createdAt) }}</text>
                 </view>
-                <text class="notice-action">{{ item.action }}</text>
+                <text class="notice-action">{{ getActionText(item.type, item.actor?.name) }}</text>
               </view>
             </view>
             <view class="notice-detail">
               <text class="notice-detail-title">{{ item.title }}</text>
-              <text v-if="item.body" class="notice-detail-body">{{ item.body }}</text>
-              <text v-if="item.status" class="notice-status">{{ item.status }}</text>
+              <text v-if="item.content" class="notice-detail-body">{{ item.content }}</text>
+              <text v-if="getStatusText(item.type)" class="notice-status">{{ getStatusText(item.type) }}</text>
             </view>
           </view>
         </view>
@@ -346,6 +369,35 @@ function handleDirectTap(item) {
   color: rgba(255, 247, 240, 0.58);
   font-size: 28rpx;
   line-height: 1.5;
+}
+
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200rpx;
+  gap: 20rpx;
+}
+
+.loading-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 3rpx solid rgba(255, 247, 240, 0.16);
+  border-top-color: $brand-color;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  color: rgba(244, 244, 244, 0.5);
+  font-size: 24rpx;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .overview-content {
@@ -566,6 +618,10 @@ function handleDirectTap(item) {
   border-radius: 28rpx;
   background: linear-gradient(180deg, #242323 0%, #1b1a19 100%);
   box-shadow: 0 18rpx 36rpx rgba(0, 0, 0, 0.18);
+}
+
+.notice-card-unread {
+  border-color: rgba(217, 122, 63, 0.3);
 }
 
 .notice-top {

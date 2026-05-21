@@ -35,6 +35,22 @@ const conditions = computed(() => [
   { label: '费用参考', value: match.value.price }
 ])
 
+const currentUserId = computed(() => {
+  const userInfo = uni.getStorageSync('userInfo')
+  return userInfo?.id || null
+})
+
+const hasApplied = computed(() => {
+  if (!match.value?.participants || !currentUserId.value) return false
+  return match.value.participants.some(p => p.id === currentUserId.value)
+})
+
+const applyStatus = computed(() => {
+  if (!match.value?.participants || !currentUserId.value) return null
+  const participant = match.value.participants.find(p => p.id === currentUserId.value)
+  return participant?.status || null
+})
+
 function handleBack() {
   const pages = getCurrentPages()
 
@@ -54,14 +70,12 @@ function handleBack() {
 
 async function handleApply() {
   try {
-    await applyMatchPost(matchId.value)
+    const result = await applyMatchPost(matchId.value)
     uni.showToast({
-      title: '申请成功',
+      title: result.message || '申请成功，等待审核',
       icon: 'success'
     })
-    setTimeout(() => {
-      uni.navigateBack()
-    }, 1500)
+    await loadMatchDetail()
   } catch (error) {
     uni.showToast({
       title: error?.message || '申请失败',
@@ -153,8 +167,34 @@ async function handleApply() {
         <text class="warm-text">{{ match.note }}</text>
       </view>
 
-      <button class="apply-button" hover-class="apply-button-hover" @click="handleApply">
+      <button 
+        v-if="!hasApplied" 
+        class="apply-button" 
+        hover-class="apply-button-hover" 
+        @click="handleApply"
+      >
         申请加入
+      </button>
+      <button 
+        v-else-if="applyStatus === 'pending'" 
+        class="apply-button apply-button-pending" 
+        disabled
+      >
+        申请审核中
+      </button>
+      <button 
+        v-else-if="applyStatus === 'joined'" 
+        class="apply-button apply-button-success" 
+        disabled
+      >
+        已加入
+      </button>
+      <button 
+        v-else-if="applyStatus === 'rejected'" 
+        class="apply-button apply-button-rejected" 
+        @click="handleApply"
+      >
+        重新申请
       </button>
     </view>
   </scroll-view>
@@ -416,6 +456,21 @@ async function handleApply() {
 
 .apply-button-hover {
   opacity: 0.88;
+}
+
+.apply-button-pending {
+  background: rgba(244, 244, 244, 0.2);
+  color: rgba(244, 244, 244, 0.6);
+}
+
+.apply-button-success {
+  background: rgba(34, 150, 111, 0.3);
+  color: rgba(34, 150, 111, 0.9);
+}
+
+.apply-button-rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: rgba(239, 68, 68, 0.8);
 }
 
 @media screen and (min-width: 768px) {

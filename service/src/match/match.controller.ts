@@ -29,4 +29,24 @@ export class MatchController {
   applyMatch(@Param('id', ParseIntPipe) id: number, @Req() request: AuthRequest) {
     return this.matchService.applyMatch(id, request.user!.id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/applications/:applicantId/approve')
+  approveApplication(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('applicantId', ParseIntPipe) applicantId: number,
+    @Req() request: AuthRequest,
+  ) {
+    return this.matchService.reviewMatchApplication(id, applicantId, request.user!.id, 'approve');
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/applications/:applicantId/reject')
+  rejectApplication(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('applicantId', ParseIntPipe) applicantId: number,
+    @Req() request: AuthRequest,
+  ) {
+    return this.matchService.reviewMatchApplication(id, applicantId, request.user!.id, 'reject');
+  }
 }
