@@ -82,27 +82,48 @@ async function handleChooseMedia() {
     maxDuration: 60,
     camera: 'back',
     success: async (res) => {
+      const tempFiles = res.tempFiles
+      
+      // 先添加到 mediaList 显示本地预览
+      const tempMediaItems = tempFiles.map((file, index) => ({
+        id: `temp-${Date.now()}-${index}`,
+        localPath: file.tempFilePath,
+        type: file.fileType || 'image',
+        uploading: true
+      }))
+      mediaList.value = [...mediaList.value, ...tempMediaItems]
+      
       uploading.value = true
       
       try {
-        const tempFiles = res.tempFiles
         const uploadResults = await uploadCommunityMedia(tempFiles)
         
         if (uploadResults.success && uploadResults.data.length > 0) {
+          // 更新 mediaList 为上传后的结果
           const newMedia = uploadResults.data.map((result, index) => ({
             id: result.filename,
             url: result.url,
             type: result.type,
-            localPath: tempFiles[index].tempFilePath
+            localPath: tempFiles[index].tempFilePath,
+            uploading: false
           }))
-          mediaList.value = [...mediaList.value, ...newMedia]
+          
+          // 替换临时项为上传后的项
+          mediaList.value = [
+            ...mediaList.value.filter(item => !item.uploading),
+            ...newMedia
+          ]
         } else {
+          // 上传失败，移除临时项
+          mediaList.value = mediaList.value.filter(item => !item.uploading)
           uni.showToast({
             title: uploadResults.message || '上传失败',
             icon: 'none'
           })
         }
       } catch (error) {
+        // 上传失败，移除临时项
+        mediaList.value = mediaList.value.filter(item => !item.uploading)
         uni.showToast({
           title: error.message || '上传失败',
           icon: 'none'
@@ -133,16 +154,25 @@ function handleWebChooseMedia() {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
     
+    // 先添加到 mediaList 显示本地预览
+    const tempFiles = files.map((file) => ({
+      tempFilePath: URL.createObjectURL(file),
+      name: file.name,
+      size: file.size,
+      type: file.type
+    }))
+    
+    const tempMediaItems = tempFiles.map((file, index) => ({
+      id: `temp-${Date.now()}-${index}`,
+      localPath: file.tempFilePath,
+      type: file.type.startsWith('video') ? 'video' : 'image',
+      uploading: true
+    }))
+    mediaList.value = [...mediaList.value, ...tempMediaItems]
+    
     uploading.value = true
     
     try {
-      const tempFiles = files.map((file) => ({
-        tempFilePath: URL.createObjectURL(file),
-        name: file.name,
-        size: file.size,
-        type: file.type
-      }))
-      
       const uploadResults = await uploadCommunityMediaWeb(files)
       
       if (uploadResults.success && uploadResults.data.length > 0) {
@@ -150,16 +180,26 @@ function handleWebChooseMedia() {
           id: result.filename,
           url: result.url,
           type: result.type,
-          localPath: tempFiles[index].tempFilePath
+          localPath: tempFiles[index].tempFilePath,
+          uploading: false
         }))
-        mediaList.value = [...mediaList.value, ...newMedia]
+        
+        // 替换临时项为上传后的项
+        mediaList.value = [
+          ...mediaList.value.filter(item => !item.uploading),
+          ...newMedia
+        ]
       } else {
+        // 上传失败，移除临时项
+        mediaList.value = mediaList.value.filter(item => !item.uploading)
         uni.showToast({
           title: uploadResults.message || '上传失败',
           icon: 'none'
         })
       }
     } catch (error) {
+      // 上传失败，移除临时项
+      mediaList.value = mediaList.value.filter(item => !item.uploading)
       uni.showToast({
         title: error.message || '上传失败',
         icon: 'none'
@@ -346,13 +386,13 @@ async function handlePublish() {
               :key="item.id || index"
               class="media-item"
             >
-              <image v-if="item.type === 'image'" class="media-preview" :src="item.url" mode="aspectFill" />
-              <view v-else class="video-preview">
-                <image class="video-thumb" :src="item.url" mode="aspectFill" />
-                <view class="play-icon">
-                  <text class="play-icon-inner">▶</text>
-                </view>
-              </view>
+              <image v-if="item.type === 'image'" class="media-preview" :src="item.localPath || item.url" mode="aspectFill" />
+      <view v-else class="video-preview">
+        <image class="video-thumb" :src="item.localPath || item.url" mode="aspectFill" />
+        <view class="play-icon">
+          <text class="play-icon-inner">▶</text>
+        </view>
+      </view>
               <text class="media-remove" @click="removeMedia(index)">×</text>
             </view>
 

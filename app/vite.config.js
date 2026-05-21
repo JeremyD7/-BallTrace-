@@ -4,5 +4,13 @@ import uniPlugin from '@dcloudio/vite-plugin-uni'
 const uni = uniPlugin.default || uniPlugin
 
 export default defineConfig({
-  plugins: [uni()]
+  plugins: [uni()],
+  server: {
+    proxy: {
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
+      }
+    }
+  }
 })

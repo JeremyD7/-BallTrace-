@@ -44,7 +44,7 @@ async function loadDetail() {
     post.value = postData
     comments.value = commentData || []
     commentsLoaded.value = true
-    currentImageIndex.value = 0
+    currentMediaIndex.value = 0
   } catch (error) {
     uni.showToast({
       title: error?.message || '帖子详情加载失败',
