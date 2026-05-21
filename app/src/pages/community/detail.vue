@@ -44,7 +44,7 @@ async function loadDetail() {
     post.value = postData
     comments.value = commentData || []
     commentsLoaded.value = true
-    currentImageIndex.value = 0
+    currentMediaIndex.value = 0
   } catch (error) {
     uni.showToast({
       title: error?.message || '帖子详情加载失败',
@@ -172,28 +172,14 @@ async function handleSubmitComment() {
           </view>
 
           <view v-if="hasMedia" class="media-card">
-            <swiper
-              class="media-swiper"
-              :current="currentMediaIndex"
-              circular
-              :indicator-dots="false"
-              @change="handleMediaChange"
-            >
+            <swiper class="media-swiper" :current="currentMediaIndex" circular :indicator-dots="false"
+              @change="handleMediaChange">
               <swiper-item v-for="(media, index) in mediaList" :key="`${media.url}-${index}`">
                 <view class="media-container">
                   <image v-if="media.type === 'image'" class="media-image" :src="media.url" mode="aspectFill" />
                   <view v-else class="video-container">
-                    <video
-                      class="media-video"
-                      :src="media.url"
-                      autoplay
-                      loop
-                      muted
-                      :controls="false"
-                      show-center-play-btn="false"
-                      @play="handleVideoPlay"
-                      @pause="handleVideoPause"
-                    />
+                    <video class="media-video" :src="media.url" autoplay loop muted :controls="false"
+                      show-center-play-btn="false" @play="handleVideoPlay" @pause="handleVideoPause" />
                     <view v-if="!videoPlaying" class="video-overlay" @click="handleVideoPlay">
                       <view class="video-play-btn">
                         <text class="play-icon">▶</text>
@@ -238,11 +224,7 @@ async function handleSubmitComment() {
                   </view>
                   <text class="comment-content">{{ comment.content }}</text>
                   <view v-if="comment.replies?.length" class="reply-box">
-                    <text
-                      v-for="reply in comment.replies"
-                      :key="reply.id"
-                      class="reply-text"
-                    >
+                    <text v-for="reply in comment.replies" :key="reply.id" class="reply-text">
                       {{ reply.authorName }}：{{ reply.content }}
                     </text>
                   </view>
@@ -260,14 +242,8 @@ async function handleSubmitComment() {
 
     <view v-if="currentPost" class="bottom-bar">
       <view class="comment-input-wrap">
-        <input
-          v-model="commentText"
-          class="comment-input"
-          confirm-type="send"
-          placeholder="说点什么..."
-          placeholder-class="comment-placeholder"
-          @confirm="handleSubmitComment"
-        />
+        <input v-model="commentText" class="comment-input" confirm-type="send" placeholder="说点什么..."
+          placeholder-class="comment-placeholder" @confirm="handleSubmitComment" />
       </view>
       <view class="bottom-actions">
         <view class="bottom-action" @click="handleLike">
