@@ -27,90 +27,7 @@ const categoryCards = computed(() => [
     tone: 'green',
     icon: '/static/images/basketball.svg'
   }
-]
-
-const panelMessages = {
-  explore: [
-    {
-      id: 1,
-      postId: 101,
-      actor: '张伟',
-      action: '赞了你的笔记',
-      title: '《投篮发力技巧分享》',
-      time: '10分钟前',
-      avatar: '/static/images/art_theman.jpg',
-      body: ''
-    },
-    {
-      id: 2,
-      postId: 102,
-      actor: '李娜',
-      action: '评论了你的笔记',
-      title: '《成华区好球场推荐》',
-      time: '1小时前',
-      avatar: '/static/images/art_thewoman.jpg',
-      body: '这家场地晚上灯光不错，下次一起去。'
-    },
-    {
-      id: 3,
-      postId: 103,
-      actor: '刘洋',
-      action: '赞了你的笔记',
-      title: '《3v3 战术拆解》',
-      time: '昨天',
-      avatar: '/static/images/jeremy.webp',
-      body: ''
-    },
-    {
-      id: 4,
-      postId: 104,
-      actor: '陈明',
-      action: '评论了你的笔记',
-      title: '《篮球装备选购指南》',
-      time: '2天前',
-      avatar: '/static/images/art_frommoon.jpg',
-      body: '鞋子的抓地感确实很关键。'
-    }
-  ],
-  match: [
-    {
-      id: 1,
-      matchId: 201,
-      actor: '李娜',
-      action: '申请加入你发起的约球活动',
-      title: '周六 16:00 成华体育中心',
-      time: '10分钟前',
-      status: '待处理'
-    },
-    {
-      id: 2,
-      matchId: 202,
-      actor: '系统',
-      action: '你的申请已通过',
-      title: '今晚 19:30 高新体育公园篮球场',
-      time: '1小时前',
-      status: '已通过'
-    },
-    {
-      id: 3,
-      matchId: 203,
-      actor: '系统',
-      action: '距离约球活动开始还有1小时',
-      title: '武侯体育公园 3号场',
-      time: '2小时前',
-      status: '提醒'
-    },
-    {
-      id: 4,
-      matchId: 204,
-      actor: '系统',
-      action: '约球活动已取消',
-      title: '青羊体育中心 3v3 局',
-      time: '昨天',
-      status: '已取消'
-    }
-  ]
-}
+])
 
 const panelMeta = {
   explore: {
@@ -127,7 +44,73 @@ const panelMeta = {
 
 const isOverview = computed(() => currentPanel.value === 'overview')
 const activeMeta = computed(() => panelMeta[currentPanel.value] || panelMeta.explore)
-const activeMessages = computed(() => panelMessages[currentPanel.value] || [])
+
+const activeMessages = computed(() => {
+  const typeMap = {
+    explore: ['like', 'comment', 'follow', 'collect'],
+    match: ['match_apply', 'match_approved', 'match_rejected']
+  }
+  const types = typeMap[currentPanel.value] || []
+  if (types.length === 0) return []
+  return notifications.value.filter(n => types.includes(n.type))
+})
+
+function formatTime(isoString) {
+  const date = new Date(isoString)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const days = Math.floor(hours / 24)
+
+  if (hours < 1) return '刚刚'
+  if (hours < 24) return `${hours}小时前`
+  if (days < 7) return `${days}天前`
+  return date.toLocaleDateString('zh-CN')
+}
+
+function getActionText(type, actorName) {
+  const actions = {
+    follow: `${actorName} 关注了您`,
+    like: `${actorName} 赞了您的笔记`,
+    comment: `${actorName} 评论了您的笔记`,
+    collect: `${actorName} 收藏了您的笔记`,
+    match_apply: `${actorName} 申请加入您发起的约球活动`,
+    match_approved: '您的约球申请已通过',
+    match_rejected: '您的约球申请未通过'
+  }
+  return actions[type] || actorName
+}
+
+function getStatusText(type) {
+  const statusMap = {
+    match_apply: '待处理',
+    match_approved: '已通过',
+    match_rejected: '已拒绝'
+  }
+  return statusMap[type] || ''
+}
+
+async function loadNotifications() {
+  try {
+    loading.value = true
+    const data = await getNotifications()
+    notifications.value = data.items || []
+    await loadUnreadCount()
+  } catch (error) {
+    console.error('加载通知失败', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadUnreadCount() {
+  try {
+    const data = await getUnreadCount()
+    unreadCount.value = data.count || 0
+  } catch (error) {
+    console.error('获取未读数量失败', error)
+  }
+}
 
 function openPanel(key) {
   currentPanel.value = key
@@ -137,21 +120,18 @@ function handleBack() {
   currentPanel.value = 'overview'
 }
 
-function handleMessageTap(item) {
-  if (currentPanel.value === 'explore' && item.postId) {
-    uni.navigateTo({
-      url: `/pages/community/detail?id=${item.postId}`
-    })
-  } else if (currentPanel.value === 'match' && item.matchId) {
-    uni.navigateTo({
-      url: `/pages/match/detail?id=${item.matchId}`
-    })
-  } else {
-    uni.showToast({
-      title: '详情页待接入',
-      icon: 'none'
-    })
+async function handleMessageTap(item) {
+  try {
+    await markAsRead(item.id)
+    loadUnreadCount()
+  } catch (error) {
+    console.error('标记已读失败', error)
   }
+  
+  uni.showToast({
+    title: `${item.actor?.name || '通知'} 详情待接入`,
+    icon: 'none'
+  })
 }
 
 function initSSE() {
@@ -205,7 +185,7 @@ onUnmounted(() => {
     <view class="message-shell">
       <view v-if="isOverview" class="message-header">
         <text class="message-title">消息</text>
-        <text class="message-subtitle">查看笔记互动和约球活动通知</text>
+        <text class="message-subtitle">查看互动、球局和系统通知</text>
       </view>
 
       <view v-else class="panel-topbar">
@@ -614,6 +594,7 @@ onUnmounted(() => {
   }
 
   .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
   }
 
