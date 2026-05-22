@@ -26,43 +26,91 @@ const categoryCards = computed(() => [
     count: notifications.value.filter(n => ['match_apply', 'match_approved', 'match_rejected'].includes(n.type)).length,
     tone: 'green',
     icon: '/static/images/basketball.svg'
-  },
-  {
-    key: 'system',
-    title: '系统消息',
-    caption: '订场、课程和平台通知',
-    count: 0,
-    tone: 'blue',
-    icon: '/static/images/message.svg'
-  }
-])
-
-const directMessages = [
-  {
-    id: 1,
-    name: '张伟',
-    message: '周六下午有空打球吗',
-    time: '16分钟前',
-    unread: true,
-    avatar: '/static/images/art_theman.jpg'
-  },
-  {
-    id: 2,
-    name: '李娜',
-    message: '下周三的课程可以提前到上午吗',
-    time: '2小时前',
-    unread: false,
-    avatar: '/static/images/art_thewoman.jpg'
-  },
-  {
-    id: 3,
-    name: '王强',
-    message: '好的，那就这么定了',
-    time: '昨天',
-    unread: false,
-    avatar: '/static/images/theman02.jpg'
   }
 ]
+
+const panelMessages = {
+  explore: [
+    {
+      id: 1,
+      postId: 101,
+      actor: '张伟',
+      action: '赞了你的笔记',
+      title: '《投篮发力技巧分享》',
+      time: '10分钟前',
+      avatar: '/static/images/art_theman.jpg',
+      body: ''
+    },
+    {
+      id: 2,
+      postId: 102,
+      actor: '李娜',
+      action: '评论了你的笔记',
+      title: '《成华区好球场推荐》',
+      time: '1小时前',
+      avatar: '/static/images/art_thewoman.jpg',
+      body: '这家场地晚上灯光不错，下次一起去。'
+    },
+    {
+      id: 3,
+      postId: 103,
+      actor: '刘洋',
+      action: '赞了你的笔记',
+      title: '《3v3 战术拆解》',
+      time: '昨天',
+      avatar: '/static/images/jeremy.webp',
+      body: ''
+    },
+    {
+      id: 4,
+      postId: 104,
+      actor: '陈明',
+      action: '评论了你的笔记',
+      title: '《篮球装备选购指南》',
+      time: '2天前',
+      avatar: '/static/images/art_frommoon.jpg',
+      body: '鞋子的抓地感确实很关键。'
+    }
+  ],
+  match: [
+    {
+      id: 1,
+      matchId: 201,
+      actor: '李娜',
+      action: '申请加入你发起的约球活动',
+      title: '周六 16:00 成华体育中心',
+      time: '10分钟前',
+      status: '待处理'
+    },
+    {
+      id: 2,
+      matchId: 202,
+      actor: '系统',
+      action: '你的申请已通过',
+      title: '今晚 19:30 高新体育公园篮球场',
+      time: '1小时前',
+      status: '已通过'
+    },
+    {
+      id: 3,
+      matchId: 203,
+      actor: '系统',
+      action: '距离约球活动开始还有1小时',
+      title: '武侯体育公园 3号场',
+      time: '2小时前',
+      status: '提醒'
+    },
+    {
+      id: 4,
+      matchId: 204,
+      actor: '系统',
+      action: '约球活动已取消',
+      title: '青羊体育中心 3v3 局',
+      time: '昨天',
+      status: '已取消'
+    }
+  ]
+}
 
 const panelMeta = {
   explore: {
@@ -74,86 +122,12 @@ const panelMeta = {
     title: '球局通知',
     summary: '活动动态',
     empty: '暂无新的球局通知'
-  },
-  system: {
-    title: '系统消息',
-    summary: '平台通知',
-    empty: '暂无新的系统消息'
   }
 }
 
 const isOverview = computed(() => currentPanel.value === 'overview')
 const activeMeta = computed(() => panelMeta[currentPanel.value] || panelMeta.explore)
-
-const activeMessages = computed(() => {
-  const typeMap = {
-    explore: ['like', 'comment', 'follow', 'collect'],
-    match: ['match_apply', 'match_approved', 'match_rejected'],
-    system: []
-  }
-  const types = typeMap[currentPanel.value] || []
-  if (types.length === 0) return []
-  return notifications.value.filter(n => types.includes(n.type))
-})
-
-const unreadDirectCount = computed(() => directMessages.filter((item) => item.unread).length)
-
-function formatTime(isoString) {
-  const date = new Date(isoString)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(hours / 24)
-
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return date.toLocaleDateString('zh-CN')
-}
-
-function getActionText(type, actorName) {
-  const actions = {
-    follow: `${actorName} 关注了您`,
-    like: `${actorName} 赞了您的笔记`,
-    comment: `${actorName} 评论了您的笔记`,
-    collect: `${actorName} 收藏了您的笔记`,
-    match_apply: `${actorName} 申请加入您发起的约球活动`,
-    match_approved: '您的约球申请已通过',
-    match_rejected: '您的约球申请未通过'
-  }
-  return actions[type] || actorName
-}
-
-function getStatusText(type) {
-  const statusMap = {
-    match_apply: '待处理',
-    match_approved: '已通过',
-    match_rejected: '已拒绝'
-  }
-  return statusMap[type] || ''
-}
-
-async function loadNotifications() {
-  try {
-    loading.value = true
-    const data = await getNotifications()
-    notifications.value = data.items || []
-    await loadUnreadCount()
-  } catch (error) {
-    console.error('加载通知失败', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadUnreadCount() {
-  try {
-    const data = await getUnreadCount()
-    unreadCount.value = data.count || 0
-  } catch (error) {
-    console.error('获取未读数量失败', error)
-  }
-}
+const activeMessages = computed(() => panelMessages[currentPanel.value] || [])
 
 function openPanel(key) {
   currentPanel.value = key
@@ -163,25 +137,21 @@ function handleBack() {
   currentPanel.value = 'overview'
 }
 
-async function handleMessageTap(item) {
-  try {
-    await markAsRead(item.id)
-    loadUnreadCount()
-  } catch (error) {
-    console.error('标记已读失败', error)
+function handleMessageTap(item) {
+  if (currentPanel.value === 'explore' && item.postId) {
+    uni.navigateTo({
+      url: `/pages/community/detail?id=${item.postId}`
+    })
+  } else if (currentPanel.value === 'match' && item.matchId) {
+    uni.navigateTo({
+      url: `/pages/match/detail?id=${item.matchId}`
+    })
+  } else {
+    uni.showToast({
+      title: '详情页待接入',
+      icon: 'none'
+    })
   }
-  
-  uni.showToast({
-    title: `${item.actor?.name || '通知'} 详情待接入`,
-    icon: 'none'
-  })
-}
-
-function handleDirectTap(item) {
-  uni.showToast({
-    title: `${item.name} 私信待接入`,
-    icon: 'none'
-  })
 }
 
 function initSSE() {
@@ -235,7 +205,7 @@ onUnmounted(() => {
     <view class="message-shell">
       <view v-if="isOverview" class="message-header">
         <text class="message-title">消息</text>
-        <text class="message-subtitle">查看互动、球局和系统通知</text>
+        <text class="message-subtitle">查看笔记互动和约球活动通知</text>
       </view>
 
       <view v-else class="panel-topbar">
@@ -264,32 +234,6 @@ onUnmounted(() => {
             </view>
             <text class="category-title">{{ category.title }}</text>
             <text class="category-caption">{{ category.caption }}</text>
-          </view>
-        </view>
-
-        <view class="section-head">
-          <text class="section-title">私信</text>
-          <text class="section-note">{{ unreadDirectCount }} 条未读</text>
-        </view>
-
-        <view class="direct-list">
-          <view
-            v-for="item in directMessages"
-            :key="item.id"
-            class="direct-item"
-            @click="handleDirectTap(item)"
-          >
-            <image class="direct-avatar" :src="item.avatar" mode="aspectFill" />
-            <view class="direct-copy">
-              <view class="direct-row">
-                <text class="direct-name">{{ item.name }}</text>
-                <text class="direct-time">{{ item.time }}</text>
-              </view>
-              <view class="direct-row direct-row-bottom">
-                <text class="direct-message">{{ item.message }}</text>
-                <view v-if="item.unread" class="direct-dot" />
-              </view>
-            </view>
           </view>
         </view>
       </view>
@@ -406,7 +350,7 @@ onUnmounted(() => {
 
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
 }
 
@@ -438,10 +382,6 @@ onUnmounted(() => {
 
 .category-card-green .category-icon {
   background: rgba(34, 150, 111, 0.18);
-}
-
-.category-card-blue .category-icon {
-  background: rgba(92, 137, 210, 0.18);
 }
 
 .category-icon-image {
@@ -480,96 +420,10 @@ onUnmounted(() => {
   line-height: 1.45;
 }
 
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 54rpx;
-  margin-bottom: 22rpx;
-}
-
-.section-title {
-  color: #f4f4f4;
-  font-size: 34rpx;
-  font-weight: 600;
-}
-
-.section-note {
-  color: rgba(244, 244, 244, 0.42);
-  font-size: 24rpx;
-}
-
-.direct-list,
 .notice-list {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
-}
-
-.direct-item {
-  display: grid;
-  grid-template-columns: 72rpx minmax(0, 1fr);
-  gap: 20rpx;
-  align-items: center;
-  min-height: 104rpx;
-  padding: 18rpx;
-  border: 1rpx solid rgba(255, 247, 240, 0.07);
-  border-radius: 26rpx;
-  background: rgba(36, 35, 35, 0.92);
-}
-
-.direct-avatar {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: #434343;
-}
-
-.direct-copy {
-  min-width: 0;
-}
-
-.direct-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-}
-
-.direct-row-bottom {
-  margin-top: 8rpx;
-}
-
-.direct-name {
-  min-width: 0;
-  color: #f4f4f4;
-  font-size: 28rpx;
-  font-weight: 600;
-}
-
-.direct-time {
-  flex-shrink: 0;
-  color: rgba(244, 244, 244, 0.42);
-  font-size: 22rpx;
-}
-
-.direct-message {
-  min-width: 0;
-  overflow: hidden;
-  color: rgba(244, 244, 244, 0.56);
-  font-size: 25rpx;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.direct-dot {
-  flex-shrink: 0;
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 50%;
-  background: $brand-color;
-  box-shadow: 0 0 18rpx rgba(217, 122, 63, 0.62);
 }
 
 .panel-topbar {
@@ -798,54 +652,8 @@ onUnmounted(() => {
     font-size: 13px;
   }
 
-  .section-head {
-    margin-top: 36px;
-    margin-bottom: 16px;
-  }
-
-  .section-title {
-    font-size: 24px;
-  }
-
-  .section-note {
-    font-size: 14px;
-  }
-
-  .direct-list,
   .notice-list {
     gap: 14px;
-  }
-
-  .direct-item {
-    grid-template-columns: 52px minmax(0, 1fr);
-    gap: 14px;
-    min-height: 80px;
-    padding: 14px;
-    border-radius: 22px;
-    border-width: 1px;
-  }
-
-  .direct-avatar {
-    width: 52px;
-    height: 52px;
-  }
-
-  .direct-row {
-    gap: 12px;
-  }
-
-  .direct-name {
-    font-size: 17px;
-  }
-
-  .direct-time,
-  .direct-message {
-    font-size: 13px;
-  }
-
-  .direct-dot {
-    width: 8px;
-    height: 8px;
   }
 
   .panel-topbar {
