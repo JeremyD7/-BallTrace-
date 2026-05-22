@@ -9,6 +9,7 @@ import { CommunityModule } from './community/community.module';
 import { ProfileModule } from './profile/profile.module';
 import { MatchModule } from './match/match.module';
 import { UploadModule } from './upload/upload.module';
+import { NotificationModule } from './notification/notification.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 const uploadsPath = resolve(process.cwd(), 'uploads');
@@ -34,6 +35,7 @@ const uploadsPath = resolve(process.cwd(), 'uploads');
     CommunityModule,
     MatchModule,
     UploadModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

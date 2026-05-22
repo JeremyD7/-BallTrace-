@@ -1,15 +1,21 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import AppTabBar from '@/components/AppTabBar.vue'
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead, subscribeNotifications } from '@/api/messages'
 
 const currentPanel = ref('overview')
+const loading = ref(true)
+const notifications = ref([])
+const unreadCount = ref(0)
+let eventSource = null
 
-const categoryCards = [
+const categoryCards = computed(() => [
   {
     key: 'explore',
     title: '探索消息',
     caption: '点赞、评论和笔记互动',
-    count: 3,
+    count: notifications.value.filter(n => ['like', 'comment', 'follow', 'collect'].includes(n.type)).length,
     tone: 'orange',
     icon: '/static/images/post.svg'
   },
@@ -17,7 +23,7 @@ const categoryCards = [
     key: 'match',
     title: '球局通知',
     caption: '约球申请、通过和活动提醒',
-    count: 5,
+    count: notifications.value.filter(n => ['match_apply', 'match_approved', 'match_rejected'].includes(n.type)).length,
     tone: 'green',
     icon: '/static/images/basketball.svg'
   }
@@ -147,6 +153,51 @@ function handleMessageTap(item) {
     })
   }
 }
+
+function initSSE() {
+  if (eventSource) {
+    eventSource.close()
+  }
+  
+  try {
+    eventSource = subscribeNotifications((notification) => {
+      notifications.value.unshift(notification)
+      loadUnreadCount()
+      
+      uni.showToast({
+        title: `收到新通知: ${notification.title}`,
+        icon: 'none',
+        duration: 2000
+      })
+    })
+  } catch (e) {
+    console.warn('SSE不可用，将使用轮询方式', e)
+  }
+}
+
+function stopSSE() {
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+}
+
+onMounted(() => {
+  loadNotifications()
+})
+
+onShow(() => {
+  loadUnreadCount()
+  initSSE()
+})
+
+onHide(() => {
+  stopSSE()
+})
+
+onUnmounted(() => {
+  stopSSE()
+})
 </script>
 
 <template>
@@ -188,32 +239,38 @@ function handleMessageTap(item) {
       </view>
 
       <view v-else class="panel-content">
-        <view v-if="activeMessages.length" class="notice-list">
+        <view v-if="loading" class="loading-wrap">
+          <view class="loading-spinner"></view>
+          <text class="loading-text">加载中...</text>
+        </view>
+
+        <view v-else-if="activeMessages.length" class="notice-list">
           <view
             v-for="item in activeMessages"
             :key="item.id"
             class="notice-card"
+            :class="{ 'notice-card-unread': item.status === 'unread' }"
             @click="handleMessageTap(item)"
           >
             <view class="notice-top">
-              <view v-if="item.avatar" class="notice-avatar-wrap">
-                <image class="notice-avatar" :src="item.avatar" mode="aspectFill" />
+              <view v-if="item.actor?.avatar" class="notice-avatar-wrap">
+                <image class="notice-avatar" :src="item.actor.avatar" mode="aspectFill" />
               </view>
               <view v-else class="notice-icon">
-                <text class="notice-icon-text">{{ item.actor.slice(0, 1) }}</text>
+                <text class="notice-icon-text">{{ item.actor?.name?.slice(0, 1) || '?' }}</text>
               </view>
               <view class="notice-main">
                 <view class="notice-title-row">
-                  <text class="notice-actor">{{ item.actor }}</text>
-                  <text class="notice-time">{{ item.time }}</text>
+                  <text class="notice-actor">{{ item.actor?.name || '系统' }}</text>
+                  <text class="notice-time">{{ formatTime(item.createdAt) }}</text>
                 </view>
-                <text class="notice-action">{{ item.action }}</text>
+                <text class="notice-action">{{ getActionText(item.type, item.actor?.name) }}</text>
               </view>
             </view>
             <view class="notice-detail">
               <text class="notice-detail-title">{{ item.title }}</text>
-              <text v-if="item.body" class="notice-detail-body">{{ item.body }}</text>
-              <text v-if="item.status" class="notice-status">{{ item.status }}</text>
+              <text v-if="item.content" class="notice-detail-body">{{ item.content }}</text>
+              <text v-if="getStatusText(item.type)" class="notice-status">{{ getStatusText(item.type) }}</text>
             </view>
           </view>
         </view>
@@ -256,6 +313,35 @@ function handleMessageTap(item) {
   color: rgba(255, 247, 240, 0.58);
   font-size: 28rpx;
   line-height: 1.5;
+}
+
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200rpx;
+  gap: 20rpx;
+}
+
+.loading-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 3rpx solid rgba(255, 247, 240, 0.16);
+  border-top-color: $brand-color;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  color: rgba(244, 244, 244, 0.5);
+  font-size: 24rpx;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .overview-content {
@@ -386,6 +472,10 @@ function handleMessageTap(item) {
   border-radius: 28rpx;
   background: linear-gradient(180deg, #242323 0%, #1b1a19 100%);
   box-shadow: 0 18rpx 36rpx rgba(0, 0, 0, 0.18);
+}
+
+.notice-card-unread {
+  border-color: rgba(217, 122, 63, 0.3);
 }
 
 .notice-top {

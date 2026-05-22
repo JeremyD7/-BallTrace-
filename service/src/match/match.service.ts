@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateMatchDto } from './dto/create-match.dto';
 import { QueryMatchesDto } from './dto/query-matches.dto';
 
@@ -38,7 +39,10 @@ const MATCH_INCLUDE = {
 
 @Injectable()
 export class MatchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async getMatches(query: QueryMatchesDto) {
     const page = query.page ?? DEFAULT_PAGE;
@@ -107,6 +111,7 @@ export class MatchService {
           matchId: createdMatch.id,
           userId,
           role: 'organizer',
+          status: 'joined',
         },
       });
 
@@ -117,13 +122,23 @@ export class MatchService {
   }
 
   async applyMatch(matchId: number, userId: number) {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
-      include: { participants: true },
-    });
+    const [match, applicant] = await this.prisma.$transaction([
+      this.prisma.match.findUnique({
+        where: { id: matchId },
+        include: { participants: true, author: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, nickname: true, avatarUrl: true },
+      }),
+    ]);
 
     if (!match) {
       throw new NotFoundException('约球不存在');
+    }
+
+    if (!applicant) {
+      throw new NotFoundException('用户不存在');
     }
 
     if (match.status !== 'recruiting') {
@@ -137,7 +152,10 @@ export class MatchService {
 
     const existingParticipant = match.participants.find((p) => p.userId === userId);
     if (existingParticipant) {
-      throw new BadRequestException('您已报名此约球');
+      if (existingParticipant.status === 'pending') {
+        throw new BadRequestException('您的申请正在审核中');
+      }
+      throw new BadRequestException('您已加入此约球');
     }
 
     await this.prisma.matchParticipant.create({
@@ -145,10 +163,88 @@ export class MatchService {
         matchId,
         userId,
         role: 'participant',
+        status: 'pending',
       },
     });
 
-    return { success: true };
+    const matchTitle = `${match.area} ${match.matchDate} ${match.startTime}-${match.endTime}`;
+
+    await this.notificationService.createNotification({
+      userId: match.userId,
+      type: 'match_apply',
+      sourceType: 'match',
+      sourceId: matchId,
+      actorId: userId,
+      actorName: applicant.nickname || applicant.id.toString(),
+      actorAvatar: applicant.avatarUrl,
+      title: matchTitle,
+      content: `${applicant.nickname || applicant.id.toString()} 申请加入您发起的约球活动`,
+      metadata: { matchId, applicantId: userId },
+    });
+
+    return { success: true, message: '申请已提交，请等待组织者审核' };
+  }
+
+  async reviewMatchApplication(matchId: number, applicantId: number, userId: number, action: 'approve' | 'reject') {
+    const [match, applicant] = await this.prisma.$transaction([
+      this.prisma.match.findUnique({
+        where: { id: matchId },
+        include: { participants: true, author: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: applicantId },
+        select: { id: true, nickname: true, avatarUrl: true },
+      }),
+    ]);
+
+    if (!match) {
+      throw new NotFoundException('约球不存在');
+    }
+
+    if (!applicant) {
+      throw new NotFoundException('申请者不存在');
+    }
+
+    if (match.userId !== userId) {
+      throw new BadRequestException('您不是此约球的组织者');
+    }
+
+    const participant = match.participants.find((p) => p.userId === applicantId);
+    if (!participant) {
+      throw new NotFoundException('申请记录不存在');
+    }
+
+    if (participant.status !== 'pending') {
+      throw new BadRequestException(`申请状态为${participant.status}，无法操作`);
+    }
+
+    const newStatus = action === 'approve' ? 'joined' : 'rejected';
+
+    await this.prisma.matchParticipant.update({
+      where: { id: participant.id },
+      data: { status: newStatus },
+    });
+
+    const matchTitle = `${match.area} ${match.matchDate} ${match.startTime}-${match.endTime}`;
+    const notificationType = action === 'approve' ? 'match_approved' : 'match_rejected';
+    const notificationContent = action === 'approve'
+      ? `您的申请已通过，可以参加「${matchTitle}」活动`
+      : `您的申请未通过「${matchTitle}」活动`;
+
+    await this.notificationService.createNotification({
+      userId: applicantId,
+      type: notificationType,
+      sourceType: 'match',
+      sourceId: matchId,
+      actorId: userId,
+      actorName: match.author.nickname || match.author.id.toString(),
+      actorAvatar: match.author.avatarUrl,
+      title: matchTitle,
+      content: notificationContent,
+      metadata: { matchId, organizerId: userId },
+    });
+
+    return { success: true, message: action === 'approve' ? '已通过申请' : '已拒绝申请' };
   }
 
   private buildMatchWhere(keyword?: string, area?: string): Prisma.MatchWhereInput {
@@ -230,6 +326,7 @@ export class MatchService {
         score: '--',
         role: p.role === 'organizer' ? '组织者' : '',
         avatar: p.user.avatarUrl,
+        status: p.status,
       })),
       createdAt: match.createdAt.toISOString(),
     };
