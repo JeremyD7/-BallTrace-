@@ -38,7 +38,8 @@ export function deleteNotification(id) {
 
 export function subscribeNotifications(callback) {
   const token = uni.getStorageSync('balltrace_token') || ''
-  const eventSource = new EventSource(`${BASE_URL}/notifications/stream?token=${token}`)
+  const baseUrl = typeof BASE_URL === 'function' ? BASE_URL() : BASE_URL
+  const eventSource = new EventSource(`${baseUrl}/notifications/stream?token=${token}`)
   
   eventSource.onmessage = function(event) {
     try {
@@ -50,8 +51,7 @@ export function subscribeNotifications(callback) {
   }
   
   eventSource.onerror = function(error) {
-    console.error('SSE连接错误', error)
-    eventSource.close()
+    console.error('SSE连接异常，将自动重连', error)
   }
   
   return eventSource

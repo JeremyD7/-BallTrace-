@@ -1,4 +1,11 @@
-const BASE_URL = 'http://localhost:3000'
+function getBaseUrl() {
+  const stored = uni.getStorageSync('balltrace_api_url')
+  if (stored) {
+    return stored
+  }
+  return 'http://localhost:3000'
+}
+
 const TOKEN_KEY = 'balltrace_token'
 const LEGACY_AUTH_KEY = 'balltrace_auth'
 
@@ -38,7 +45,7 @@ export function request({ url, method = 'GET', data, header = {} }) {
     const token = getToken()
 
     uni.request({
-      url: `${BASE_URL}${url}`,
+      url: `${getBaseUrl()}${url}`,
       method,
       data,
       header: {
@@ -63,4 +70,4 @@ export function request({ url, method = 'GET', data, header = {} }) {
   })
 }
 
-export { BASE_URL }
+export { getBaseUrl as BASE_URL }
