@@ -28,3 +28,17 @@ export function applyMatchPost(id, data = {}) {
     data
   })
 }
+
+export function approveMatchApplication(id, applicantId) {
+  return request({
+    url: `/matches/${id}/applications/${applicantId}/approve`,
+    method: 'POST'
+  })
+}
+
+export function rejectMatchApplication(id, applicantId) {
+  return request({
+    url: `/matches/${id}/applications/${applicantId}/reject`,
+    method: 'POST'
+  })
+}

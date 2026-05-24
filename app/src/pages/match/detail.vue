@@ -1,21 +1,35 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { getMatchPostDetail, applyMatchPost } from '@/api/matches'
+import { computed, onUnmounted, ref } from 'vue'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
+import {
+  approveMatchApplication,
+  getMatchPostDetail,
+  applyMatchPost,
+  rejectMatchApplication
+} from '@/api/matches'
+import { subscribeNotifications } from '@/api/messages'
 
 const matchId = ref(1)
 const matchData = ref(null)
 const loading = ref(true)
+const applying = ref(false)
+const reviewingApplicantId = ref(null)
+let matchStream = null
 
 onLoad((options) => {
   matchId.value = Number(options?.id || 1)
   loadMatchDetail()
 })
+onShow(connectMatchStream)
+onHide(closeMatchStream)
+onUnmounted(closeMatchStream)
 
 async function loadMatchDetail() {
+  loading.value = true
+
   try {
     const data = await getMatchPostDetail(matchId.value)
-    matchData.value = data
+    setMatchData(data)
   } catch (error) {
     uni.showToast({
       title: error?.message || '加载失败',
@@ -28,28 +42,145 @@ async function loadMatchDetail() {
 
 const match = computed(() => matchData.value)
 const missingCount = computed(() => Math.max((match.value?.total || 0) - (match.value?.joined || 0), 0))
+const participants = computed(() => {
+  if (!Array.isArray(match.value?.participants)) {
+    return []
+  }
+
+  return match.value.participants
+})
+const visibleParticipants = computed(() => participants.value.filter((member) => member.status !== 'rejected'))
 
 const conditions = computed(() => [
-  { label: '活动类型', value: match.value.type },
-  { label: '水平要求', value: match.value.level },
-  { label: '费用参考', value: match.value.price }
+  { label: '活动类型', value: match.value?.type || '--' },
+  { label: '水平要求', value: match.value?.level || '--' },
+  { label: '费用参考', value: match.value?.price || '--' }
 ])
 
 const currentUserId = computed(() => {
-  const userInfo = uni.getStorageSync('userInfo')
-  return userInfo?.id || null
+  const storedUser = uni.getStorageSync('balltrace_user') || uni.getStorageSync('userInfo')
+  return storedUser?.id || null
+})
+
+const isOrganizer = computed(() => {
+  if (!participants.value.length || !currentUserId.value) {
+    return false
+  }
+
+  return participants.value.some((participant) => (
+    Number(participant.id) === Number(currentUserId.value) &&
+      participant.role === '组织者'
+  ))
 })
 
 const hasApplied = computed(() => {
-  if (!match.value?.participants || !currentUserId.value) return false
-  return match.value.participants.some(p => p.id === currentUserId.value)
+  if (!participants.value.length || !currentUserId.value) return false
+  return participants.value.some(p => Number(p.id) === Number(currentUserId.value))
 })
 
 const applyStatus = computed(() => {
-  if (!match.value?.participants || !currentUserId.value) return null
-  const participant = match.value.participants.find(p => p.id === currentUserId.value)
+  if (!participants.value.length || !currentUserId.value) return null
+  const participant = participants.value.find(p => Number(p.id) === Number(currentUserId.value))
   return participant?.status || null
 })
+
+const canApply = computed(() => !applying.value && (!hasApplied.value || applyStatus.value === 'rejected'))
+
+function canReviewMember(member) {
+  return Boolean(
+    isOrganizer.value &&
+      member?.status === 'pending' &&
+      Number(member.id) !== Number(currentUserId.value)
+  )
+}
+
+function isMatchSnapshot(payload) {
+  return Boolean(
+    payload &&
+      typeof payload === 'object' &&
+      payload.id != null &&
+      (Array.isArray(payload.participants) ||
+        Object.prototype.hasOwnProperty.call(payload, 'joined') ||
+        Object.prototype.hasOwnProperty.call(payload, 'total') ||
+        Object.prototype.hasOwnProperty.call(payload, 'schedule'))
+  )
+}
+
+function extractMatchSnapshot(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  if (isMatchSnapshot(payload)) {
+    return payload
+  }
+
+  const wrappedMatch = payload.match
+  if (wrappedMatch && typeof wrappedMatch === 'object' && isMatchSnapshot(wrappedMatch)) {
+    return wrappedMatch
+  }
+
+  const wrappedData = payload.data
+  if (wrappedData && typeof wrappedData === 'object') {
+    const nestedData = extractMatchSnapshot(wrappedData)
+    if (nestedData) {
+      return nestedData
+    }
+  }
+
+  const wrappedPayload = payload.payload
+  if (wrappedPayload && typeof wrappedPayload === 'object') {
+    const nestedPayload = extractMatchSnapshot(wrappedPayload)
+    if (nestedPayload) {
+      return nestedPayload
+    }
+  }
+
+  return null
+}
+
+function setMatchData(nextMatch) {
+  if (!nextMatch || typeof nextMatch !== 'object') {
+    return
+  }
+
+  matchData.value = {
+    ...(matchData.value || {}),
+    ...nextMatch,
+    id: Number(nextMatch.id || matchId.value)
+  }
+}
+
+function handleMatchStreamMessage(message) {
+  const snapshot = extractMatchSnapshot(message)
+
+  if (!snapshot || Number(snapshot.id) !== Number(matchId.value)) {
+    return
+  }
+
+  setMatchData(snapshot)
+}
+
+function connectMatchStream() {
+  // #ifdef H5
+  if (matchStream) {
+    return
+  }
+
+  try {
+    matchStream = subscribeNotifications(handleMatchStreamMessage)
+  } catch (error) {
+    console.warn('约球推送连接失败', error)
+  }
+  // #endif
+}
+
+function closeMatchStream() {
+  if (matchStream) {
+    matchStream.close()
+    matchStream = null
+  }
+}
 
 function handleBack() {
   const pages = getCurrentPages()
@@ -69,6 +200,12 @@ function handleBack() {
 }
 
 async function handleApply() {
+  if (!canApply.value) {
+    return
+  }
+
+  applying.value = true
+
   try {
     const result = await applyMatchPost(matchId.value)
     uni.showToast({
@@ -81,6 +218,35 @@ async function handleApply() {
       title: error?.message || '申请失败',
       icon: 'none'
     })
+  } finally {
+    applying.value = false
+  }
+}
+
+async function handleReview(member, action) {
+  if (!canReviewMember(member) || reviewingApplicantId.value) {
+    return
+  }
+
+  reviewingApplicantId.value = member.id
+
+  try {
+    const result = action === 'approve'
+      ? await approveMatchApplication(matchId.value, member.id)
+      : await rejectMatchApplication(matchId.value, member.id)
+
+    uni.showToast({
+      title: result?.message || (action === 'approve' ? '已通过申请' : '已拒绝申请'),
+      icon: 'success'
+    })
+    await loadMatchDetail()
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '处理失败',
+      icon: 'none'
+    })
+  } finally {
+    reviewingApplicantId.value = null
   }
 }
 </script>
@@ -137,11 +303,28 @@ async function handleApply() {
       <view class="detail-section">
         <text class="section-title">参与成员</text>
         <view class="member-grid">
-          <view v-for="member in match.participants" :key="member.id" class="member-card">
-            <image class="member-avatar" :src="member.avatar" mode="aspectFill" />
+          <view v-for="member in visibleParticipants" :key="member.id" class="member-card">
+            <image class="member-avatar" :src="member.avatar || '/static/images/jeremy.webp'" mode="aspectFill" />
             <text class="member-name">{{ member.name }}</text>
             <text class="member-score">{{ member.score }}</text>
             <text v-if="member.role" class="member-role">{{ member.role }}</text>
+            <text v-else-if="member.status === 'pending'" class="member-status">审核中</text>
+            <view v-if="canReviewMember(member)" class="member-review-actions">
+              <button
+                class="member-review-button member-review-approve"
+                :disabled="reviewingApplicantId === member.id"
+                @click.stop="handleReview(member, 'approve')"
+              >
+                通过
+              </button>
+              <button
+                class="member-review-button member-review-reject"
+                :disabled="reviewingApplicantId === member.id"
+                @click.stop="handleReview(member, 'reject')"
+              >
+                拒绝
+              </button>
+            </view>
           </view>
         </view>
       </view>
@@ -170,10 +353,11 @@ async function handleApply() {
       <button 
         v-if="!hasApplied" 
         class="apply-button" 
+        :class="{ 'apply-button-pending': applying }"
         hover-class="apply-button-hover" 
         @click="handleApply"
       >
-        申请加入
+        {{ applying ? '提交中...' : '申请加入' }}
       </button>
       <button 
         v-else-if="applyStatus === 'pending'" 
@@ -194,7 +378,7 @@ async function handleApply() {
         class="apply-button apply-button-rejected" 
         @click="handleApply"
       >
-        重新申请
+        {{ applying ? '提交中...' : '重新申请' }}
       </button>
     </view>
   </scroll-view>
@@ -404,6 +588,45 @@ async function handleApply() {
   font-size: 18rpx;
 }
 
+.member-status {
+  margin-top: 8rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(244, 244, 244, 0.1);
+  color: rgba(244, 244, 244, 0.64);
+  font-size: 18rpx;
+}
+
+.member-review-actions {
+  display: flex;
+  gap: 10rpx;
+  margin-top: 10rpx;
+}
+
+.member-review-button {
+  min-width: 88rpx;
+  height: 42rpx;
+  padding: 0 12rpx;
+  border: 0;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  line-height: 1;
+}
+
+.member-review-button::after {
+  border: 0;
+}
+
+.member-review-approve {
+  background: rgba(34, 150, 111, 0.22);
+  color: rgba(34, 150, 111, 0.95);
+}
+
+.member-review-reject {
+  background: rgba(239, 68, 68, 0.18);
+  color: rgba(239, 68, 68, 0.9);
+}
+
 .condition-list {
   display: flex;
   flex-direction: column;
@@ -578,6 +801,24 @@ async function handleApply() {
     margin-top: 6px;
     padding: 3px 8px;
     font-size: 11px;
+  }
+
+  .member-status {
+    margin-top: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .member-review-actions {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .member-review-button {
+    min-width: 64px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .condition-list {

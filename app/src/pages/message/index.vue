@@ -90,6 +90,34 @@ function getStatusText(type) {
   return statusMap[type] || ''
 }
 
+function getNotificationMetadata(item) {
+  if (!item?.metadata) {
+    return {}
+  }
+
+  if (typeof item.metadata === 'string') {
+    try {
+      return JSON.parse(item.metadata)
+    } catch (error) {
+      return {}
+    }
+  }
+
+  return item.metadata
+}
+
+function isMatchNotification(item) {
+  return item?.sourceType === 'match' || ['match_apply', 'match_approved', 'match_rejected'].includes(item?.type)
+}
+
+function getMatchIdFromNotification(item) {
+  const metadata = getNotificationMetadata(item)
+  const id = item?.sourceId || metadata.matchId
+  const matchId = Number(id)
+
+  return Number.isFinite(matchId) ? matchId : null
+}
+
 async function loadNotifications() {
   try {
     loading.value = true
@@ -123,11 +151,27 @@ function handleBack() {
 async function handleMessageTap(item) {
   try {
     await markAsRead(item.id)
-    loadUnreadCount()
+    notifications.value = notifications.value.map((notification) => (
+      notification.id === item.id
+        ? { ...notification, status: 'read' }
+        : notification
+    ))
+    await loadUnreadCount()
   } catch (error) {
     console.error('标记已读失败', error)
   }
-  
+
+  if (isMatchNotification(item)) {
+    const matchId = getMatchIdFromNotification(item)
+
+    if (matchId) {
+      uni.navigateTo({
+        url: `/pages/match/detail?id=${matchId}`
+      })
+      return
+    }
+  }
+
   uni.showToast({
     title: `${item.actor?.name || '通知'} 详情待接入`,
     icon: 'none'

@@ -1,14 +1,34 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { onHide, onShow } from '@dcloudio/uni-app'
 import MatchCard from '@/components/MatchCard.vue'
 import { getMatchPosts } from '@/api/matches'
+import { subscribeNotifications } from '@/api/messages'
 
 const posts = ref([])
+const loading = ref(false)
+const hasLoadedOnce = ref(false)
 const visiblePosts = computed(() => posts.value)
+let matchStream = null
 
 onMounted(loadMatches)
+onShow(() => {
+  connectMatchStream()
+
+  if (hasLoadedOnce.value) {
+    loadMatches()
+  }
+})
+onHide(closeMatchStream)
+onUnmounted(closeMatchStream)
 
 async function loadMatches() {
+  if (loading.value) {
+    return
+  }
+
+  loading.value = true
+
   try {
     const data = await getMatchPosts({
       page: 1,
@@ -20,6 +40,107 @@ async function loadMatches() {
       title: error?.message || '约球列表加载失败',
       icon: 'none'
     })
+  } finally {
+    loading.value = false
+    hasLoadedOnce.value = true
+  }
+}
+
+function isMatchSnapshot(payload) {
+  return Boolean(
+    payload &&
+      typeof payload === 'object' &&
+      payload.id != null &&
+      (Array.isArray(payload.participants) ||
+        Object.prototype.hasOwnProperty.call(payload, 'joined') ||
+        Object.prototype.hasOwnProperty.call(payload, 'total') ||
+        Object.prototype.hasOwnProperty.call(payload, 'schedule'))
+  )
+}
+
+function extractMatchSnapshot(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  if (isMatchSnapshot(payload)) {
+    return payload
+  }
+
+  const wrappedMatch = payload.match
+  if (wrappedMatch && typeof wrappedMatch === 'object' && isMatchSnapshot(wrappedMatch)) {
+    return wrappedMatch
+  }
+
+  const wrappedData = payload.data
+  if (wrappedData && typeof wrappedData === 'object') {
+    const nestedData = extractMatchSnapshot(wrappedData)
+    if (nestedData) {
+      return nestedData
+    }
+  }
+
+  const wrappedPayload = payload.payload
+  if (wrappedPayload && typeof wrappedPayload === 'object') {
+    const nestedPayload = extractMatchSnapshot(wrappedPayload)
+    if (nestedPayload) {
+      return nestedPayload
+    }
+  }
+
+  return null
+}
+
+function mergeMatchSnapshot(nextMatch) {
+  const matchId = Number(nextMatch?.id)
+
+  if (!Number.isFinite(matchId)) {
+    return
+  }
+
+  const nextPosts = posts.value.map((item) => {
+    if (Number(item.id) !== matchId) {
+      return item
+    }
+
+    return {
+      ...item,
+      ...nextMatch,
+      id: matchId
+    }
+  })
+
+  posts.value = nextPosts
+}
+
+function handleMatchStreamMessage(message) {
+  const snapshot = extractMatchSnapshot(message)
+
+  if (!snapshot) {
+    return
+  }
+
+  mergeMatchSnapshot(snapshot)
+}
+
+function connectMatchStream() {
+  // #ifdef H5
+  if (matchStream) {
+    return
+  }
+
+  try {
+    matchStream = subscribeNotifications(handleMatchStreamMessage)
+  } catch (error) {
+    console.warn('约球推送连接失败', error)
+  }
+  // #endif
+}
+
+function closeMatchStream() {
+  if (matchStream) {
+    matchStream.close()
+    matchStream = null
   }
 }
 
