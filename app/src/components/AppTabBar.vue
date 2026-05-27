@@ -111,7 +111,8 @@ function handleSwitch(tab) {
   height: 60rpx;
   border-radius: 50%;
   background: #434343;
-  transition: transform 0.18s ease, background 0.18s ease;
+  transition: transform 0.18s ease;
+  will-change: transform;
 }
 
 .tabbar-icon-image {

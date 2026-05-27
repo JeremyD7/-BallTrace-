@@ -221,7 +221,7 @@ async function handleSubmit() {
   <view class="login-page">
     <view class="login-shell">
       <view class="brand-block">
-        <image class="brand-logo" src="@/static/images/logo.png" mode="aspectFit" />
+        <image class="brand-logo" src="/static/images/logo-optimized.png" mode="aspectFit" />
         <view class="brand-copy">
           <text class="brand-mark">BALLTRACE</text>
           <text class="brand-title">欢迎来到球迹</text>

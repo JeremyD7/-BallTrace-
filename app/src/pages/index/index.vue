@@ -1,10 +1,15 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppTabBar from '@/components/AppTabBar.vue'
-import PostWaterfallCard from '@/components/PostWaterfallCard.vue'
 import { useCommunityStore } from '@/stores/community'
 
+const PostWaterfallCard = defineAsyncComponent(() => import('@/components/PostWaterfallCard.vue'))
+const INITIAL_POST_RENDER_COUNT = 6
+const POST_RENDER_BATCH_SIZE = 4
 const communityStore = useCommunityStore()
+let cancelDeferredLoad = null
+let cancelDeferredRender = null
+const preloadedCoverImages = []
 
 const quickActions = [
   {
@@ -22,18 +27,91 @@ const quickActions = [
 ]
 
 const hasLoaded = ref(false)
+const renderedPostCount = ref(0)
+const posts = ref([])
 
-const posts = computed(() => communityStore.posts)
 const loading = computed(() => communityStore.loading)
-const visiblePosts = computed(() => posts.value)
-const leftPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 0))
-const rightPosts = computed(() => visiblePosts.value.filter((_, index) => index % 2 === 1))
+const visiblePosts = computed(() => posts.value.slice(0, renderedPostCount.value))
+const postColumns = computed(() => {
+  const columns = [[], []]
 
-onMounted(loadPosts)
+  visiblePosts.value.forEach((post, index) => {
+    columns[index % 2].push(post)
+  })
+
+  return columns
+})
+const leftPosts = computed(() => postColumns.value[0])
+const rightPosts = computed(() => postColumns.value[1])
+
+onMounted(() => {
+  const id = setTimeout(() => {
+    cancelDeferredLoad = null
+    loadPosts()
+  }, 0)
+
+  cancelDeferredLoad = () => clearTimeout(id)
+})
+
+onUnmounted(() => {
+  cancelPendingWork()
+})
+
+watch(
+  posts,
+  (nextPosts) => {
+    cancelDeferredRender?.()
+    cancelDeferredRender = null
+
+    if (!nextPosts.length) {
+      renderedPostCount.value = 0
+      return
+    }
+
+    renderedPostCount.value = Math.min(nextPosts.length, INITIAL_POST_RENDER_COUNT)
+
+    scheduleRemainingPostRender(nextPosts.length)
+  },
+  { immediate: true }
+)
+
+function deferMainThreadWork(callback, timeout = 0) {
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+    const id = window.requestIdleCallback(callback, { timeout })
+    return () => window.cancelIdleCallback?.(id)
+  }
+
+  const id = setTimeout(callback, timeout)
+  return () => clearTimeout(id)
+}
+
+function cancelPendingWork() {
+  cancelDeferredLoad?.()
+  cancelDeferredRender?.()
+  cancelDeferredLoad = null
+  cancelDeferredRender = null
+}
+
+function scheduleRemainingPostRender(total) {
+  cancelDeferredRender?.()
+  cancelDeferredRender = null
+
+  if (renderedPostCount.value >= total) {
+    return
+  }
+
+  cancelDeferredRender = deferMainThreadWork(() => {
+    cancelDeferredRender = null
+    renderedPostCount.value = Math.min(total, renderedPostCount.value + POST_RENDER_BATCH_SIZE)
+    scheduleRemainingPostRender(total)
+  }, 240)
+}
 
 async function loadPosts(forceRefresh = false) {
   try {
-    await communityStore.fetchPosts(forceRefresh)
+    const nextPosts = await communityStore.fetchPosts(forceRefresh)
+    preloadPostCovers(nextPosts)
+    posts.value = Array.isArray(nextPosts) ? nextPosts : []
   } catch (error) {
     uni.showToast({
       title: error?.message || '帖子流加载失败',
@@ -44,7 +122,40 @@ async function loadPosts(forceRefresh = false) {
   }
 }
 
+function getPostCover(post) {
+  const mediaList = post?.media || []
+  return mediaList[0]?.url || post?.cover || ''
+}
+
+function preloadPostCovers(nextPosts = []) {
+  if (typeof window === 'undefined' || typeof window.Image === 'undefined' || !Array.isArray(nextPosts)) {
+    return
+  }
+
+  const images = nextPosts.slice(0, 2).map((post) => {
+    const coverUrl = getPostCover(post)
+
+    if (!coverUrl) {
+      return null
+    }
+
+    const image = new window.Image()
+    image.decoding = 'async'
+    image.fetchPriority = 'high'
+    image.src = coverUrl
+    return image
+  }).filter(Boolean)
+
+  preloadedCoverImages.splice(0, preloadedCoverImages.length, ...images)
+}
+
 async function onRefresh() {
+  cancelDeferredLoad?.()
+  cancelDeferredLoad = null
+  cancelDeferredRender?.()
+  cancelDeferredRender = null
+  renderedPostCount.value = Math.min(posts.value.length, INITIAL_POST_RENDER_COUNT)
+
   await loadPosts(true)
   uni.showToast({
     title: '刷新成功',
@@ -90,7 +201,7 @@ function handlePostClick(post) {
   >
     <view class="page-shell">
       <view class="brand-row">
-        <image class="brand-logo" src="@/static/images/logo.png" mode="aspectFit" />
+        <image class="brand-logo" src="/static/images/logo-optimized.png" mode="aspectFit" />
         <text class="brand-subtitle">你的篮球生活平台</text>
       </view>
 
@@ -176,6 +287,7 @@ function handlePostClick(post) {
   border-radius: 32rpx;
   background: linear-gradient(180deg, #242323 0%, #1a1918 100%);
   box-shadow: 0 18rpx 36rpx rgba(0, 0, 0, 0.22);
+  contain: layout paint;
 }
 
 .action-icon {

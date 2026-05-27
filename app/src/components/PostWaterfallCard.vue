@@ -35,7 +35,7 @@ function handleClick() {
         <text class="post-title">{{ post.title }}</text>
         <view class="post-footer">
           <view class="post-author">
-            <image class="author-avatar" :src="post.avatar || '/static/images/jeremy.webp'" mode="aspectFill" />
+            <image class="author-avatar" :src="post.avatar || '/static/images/jeremy.webp'" mode="aspectFill" lazy-load />
             <text class="author-name">{{ post.author }}</text>
           </view>
           <view class="post-like">
@@ -56,6 +56,9 @@ function handleClick() {
   overflow: hidden;
   background: #2a2522;
   box-shadow: 0 18rpx 40rpx rgba(0, 0, 0, 0.2);
+  contain: layout paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 320px;
 }
 
 .post-media {

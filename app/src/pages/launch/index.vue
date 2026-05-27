@@ -8,11 +8,11 @@ function handleJoin() {
 
 <template>
   <view class="launch-page">
-    <image class="launch-bg" src="@/static/images/launch-bg-default.jpg" mode="aspectFill" />
+    <image class="launch-bg" src="/static/images/launch-bg-mobile.jpg" mode="aspectFill" />
 
     <view class="launch-overlay" />
 
-    <image class="launch-logo" src="@/static/images/logo.png" mode="aspectFit" />
+    <image class="launch-logo" src="/static/images/logo-optimized.png" mode="aspectFit" />
 
     <view class="launch-copy">
       <text class="launch-title">BALLTRACE球迹派</text>
